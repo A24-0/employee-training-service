@@ -1,56 +1,60 @@
 from datetime import date
 
-employee_name = "Иванов Иван Иванович"
-mail = "ivanov@example.com"
-department = "Отдел контроля качества"
-position = "Ручное тестирование"
+COURSE_NAME = "Ручное тестирование ПО для начинающих"
+COURSE_CATEGORY = "ТESTирование"
+TOTAL_LESSONS = 10
 
-course_name = "Ручное тестирование программного обеспечения для начинающих"
-course_category = "Тестирование"
-total_lessons = 10
-lessons_completed = 10
-deadline = date(2026, 9, 30)
-today = date.today()
+EMPLOYEE_NAME = "Иванов Иван Иванович"
+DEPARTMENT = "Отдел контроля качества"
 
-total_questions = 20
-correct_answers = 17
 
-accuracy = (correct_answers / total_questions) * 100 
-accuracy_rounded = int(accuracy)
+def get_course_info(name: str, category: str, lessons: int) -> str:
+    """Возвращает строку с информацией о курсе."""
+    return f"Курс: {name} ({category}), всего уроков: {lessons}"
 
-all_lessons_done = lessons_completed == total_lessons
-test_passed = accuracy >= 80
-is_on_time = today <= deadline
 
-def get_learning_status(all_lessons_done, test_passed, is_on_time, accuracy_rounded):
+def check_lessons_completion(lessons_completed: int, total: int) -> str:
+    """Проверяет, все ли уроки пройдены."""
+    if lessons_completed == total:
+        return "Все уроки пройдены"
+    return f"Пройдено {lessons_completed} из {total} уроков"
+
+
+def calculate_status(accuracy: int, is_on_time: bool, all_lessons_done: bool) -> str:
+    """Определяет итоговый статус прохождения курса."""
     if not all_lessons_done:
         return "Курс не завершён: не все уроки пройдены"
-    if not test_passed:
-        return f"Тест не сдан. Результат: {accuracy_rounded}% (порог — 80%)"
+    if accuracy < 80:
+        return f"Тест не сдан. Результат: {accuracy}% (порог — 80%)"
     if not is_on_time:
         return "Курс пройден, но с нарушением сроков"
-    if accuracy_rounded >= 90:
+    if accuracy >= 90:
         return "Курс пройден на отлично! Сертификат выдан."
     return "Курс пройден успешно. Сертификат выдан."
 
-status = get_learning_status(all_lessons_done, test_passed, is_on_time, accuracy_rounded)
 
-days_left = (deadline - today).days
-bonus_points = int(days_left * 0.25)
-total_points = accuracy_rounded + bonus_points
+def main() -> None:
+    """Основной сценарий программы."""
+    print(get_course_info(COURSE_NAME, COURSE_CATEGORY, TOTAL_LESSONS))
+    
+    lessons_completed = 10
+    correct_answers = 17
+    total_questions = 20
+    deadline = date(2026, 9, 30)
+    today = date.today()
+    
+    all_lessons_done = (lessons_completed == TOTAL_LESSONS)
+    accuracy = int((correct_answers / total_questions) * 100) if total_questions > 0 else 0
+    is_on_time = (today <= deadline)
+    
+    status = calculate_status(accuracy, is_on_time, all_lessons_done)
+    lessons_status = check_lessons_completion(lessons_completed, TOTAL_LESSONS)
+    
+    print(f"\nСотрудник: {EMPLOYEE_NAME} ({DEPARTMENT})")
+    print(f"Прогресс: {lessons_status}")
+    print(f"Точность ответов: {accuracy}%")
+    print(f"Итоговый статус: {status}")
 
-print(f"Сотрудник: {employee_name}")
-print(f"Почта: {mail}")
-print(f"Отдел: {department}")
-print(f"Должность: {position}")
-print(f"Курс: {course_name}")
-print(f"Категория: {course_category}")
-print(f"Дедлайн: {deadline}")
-print(f"Сегодня: {today}")
-print(f"Осталось дней: {days_left}")
-print(f"Уроков пройдено: {lessons_completed} из {total_lessons}")
-print(f"Правильных ответов: {correct_answers} из {total_questions}")
-print(f"Точность: {accuracy_rounded}%")
-print(f"Бонус за выполение в срок: {bonus_points} баллов")
-print(f"Итого баллов: {total_points}")
-print(f"Статус: {status}")
+
+if __name__ == "__main__":
+    main()
