@@ -1,8 +1,8 @@
 [
   {
     "id": 1,
-    "employee_id": 1,
     "course_id": 1,
+    "employee_id": 1,
     "deadline": "2026-12-31",
     "lessons_completed": 10,
     "correct_answers": 18,

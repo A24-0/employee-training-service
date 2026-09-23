@@ -2,22 +2,12 @@
 
 from typing import List
 
-from courses import (
-    add_course,
-    check_course_lessons,
-    find_course,
-    find_course_by_id,
-    show_courses,
-)
-from employees import (
-    add_employee,
-    find_employee_by_id,
-    show_employees,
-)
-from enrollments import (
+from models import Course, Employee, Enrollment
+from models.courses import add_course, find_course, find_course_by_id, show_courses
+from models.employees import add_employee, find_employee_by_id, show_employees
+from models.enrollments import (
     cancel_enrollment,
     create_enrollment,
-    get_enrollment_status,
     show_enrollments,
     update_progress,
 )
@@ -51,27 +41,27 @@ MENU = """
 """
 
 
-def add_new_course(courses: List[dict]) -> None:
+def add_new_course(courses: List[Course]) -> None:
     """Сценарий добавления нового курса."""
     title = input_str("Название курса: ")
     category = input_str("Категория курса: ")
     total_lessons = input_int("Количество уроков: ")
     course = add_course(courses, title, category, total_lessons)
-    print(f"Курс добавлен: {course['title']}")
+    print(f"Курс добавлен: {course.title}")
 
 
-def add_new_employee(employees: List[dict]) -> None:
+def add_new_employee(employees: List[Employee]) -> None:
     """Сценарий добавления нового сотрудника."""
     full_name = input_str("ФИО сотрудника: ")
     department = input_str("Отдел: ")
     employee = add_employee(employees, full_name, department)
-    print(f"Сотрудник добавлен: {employee['full_name']}")
+    print(f"Сотрудник добавлен: {employee.full_name}")
 
 
 def create_new_enrollment(
-    enrollments: List[dict],
-    courses: List[dict],
-    employees: List[dict],
+    enrollments: List[Enrollment],
+    courses: List[Course],
+    employees: List[Employee],
 ) -> None:
     """Сценарий назначения курса сотруднику."""
     course_id = input_int("ID курса: ")
@@ -90,18 +80,15 @@ def create_new_enrollment(
     total_questions = input_int("Количество вопросов итогового теста: ")
 
     enrollment = create_enrollment(
-        enrollments, employee_id, course_id, deadline, total_questions
+        enrollments, employee, course, deadline, total_questions
     )
     if enrollment is None:
         print("У сотрудника уже есть активное назначение на этот курс")
         return
-    print(f"Назначение создано: id={enrollment['id']}")
+    print(f"Назначение создано: id={enrollment.id}")
 
 
-def update_enrollment_progress(
-    enrollments: List[dict],
-    courses: List[dict],
-) -> None:
+def update_enrollment_progress(enrollments: List[Enrollment]) -> None:
     """Сценарий обновления прогресса прохождения курса."""
     enrollment_id = input_int("ID назначения: ")
     lessons_completed = input_int("Пройдено уроков: ")
@@ -112,14 +99,11 @@ def update_enrollment_progress(
         print("Назначение не найдено")
         return
 
-    enrollment = next(
-        (e for e in enrollments if e["id"] == enrollment_id), None
-    )
-    course = find_course_by_id(courses, enrollment["course_id"])
-    print(get_enrollment_status(enrollment, course))
+    enrollment = next(e for e in enrollments if e.id == enrollment_id)
+    print(enrollment.status())
 
 
-def cancel_existing_enrollment(enrollments: List[dict]) -> None:
+def cancel_existing_enrollment(enrollments: List[Enrollment]) -> None:
     """Сценарий отмены назначения курса."""
     enrollment_id = input_int("ID назначения: ")
     if cancel_enrollment(enrollments, enrollment_id):
@@ -132,7 +116,7 @@ def main() -> None:
     """Основной сценарий программы."""
     courses = load_courses(COURSES_FILE)
     employees = load_employees(EMPLOYEES_FILE)
-    enrollments = load_enrollments(ENROLLMENTS_FILE)
+    enrollments = load_enrollments(ENROLLMENTS_FILE, courses, employees)
 
     while True:
         print(MENU)
@@ -150,7 +134,7 @@ def main() -> None:
             if course is None:
                 print("Курс не найден")
             else:
-                print(check_course_lessons(course, min_lessons))
+                print(course.has_at_least(min_lessons))
         elif choice == "4":
             add_new_course(courses)
         elif choice == "5":
@@ -160,11 +144,11 @@ def main() -> None:
         elif choice == "7":
             create_new_enrollment(enrollments, courses, employees)
         elif choice == "8":
-            update_enrollment_progress(enrollments, courses)
+            update_enrollment_progress(enrollments)
         elif choice == "9":
             cancel_existing_enrollment(enrollments)
         elif choice == "10":
-            show_enrollments(enrollments, courses, employees)
+            show_enrollments(enrollments)
         elif choice == "0":
             break
         else:
