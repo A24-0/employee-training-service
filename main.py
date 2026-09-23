@@ -1,59 +1,179 @@
-from datetime import date
+"""Точка входа сервиса обучения сотрудников."""
 
-COURSE_NAME = "Ручное тестирование ПО для начинающих"
-COURSE_CATEGORY = "ТESTирование"
-TOTAL_LESSONS = 10
+from typing import List
 
-EMPLOYEE_NAME = "Иванов Иван Иванович"
-DEPARTMENT = "Отдел контроля качества"
+from courses import (
+    add_course,
+    check_course_lessons,
+    find_course,
+    find_course_by_id,
+    show_courses,
+)
+from employees import (
+    add_employee,
+    find_employee_by_id,
+    show_employees,
+)
+from enrollments import (
+    cancel_enrollment,
+    create_enrollment,
+    get_enrollment_status,
+    show_enrollments,
+    update_progress,
+)
+from storage import (
+    load_courses,
+    load_employees,
+    load_enrollments,
+    save_courses,
+    save_employees,
+    save_enrollments,
+)
+from utils import input_date, input_int, input_str
+
+COURSES_FILE = "data/courses.json"
+EMPLOYEES_FILE = "data/employees.json"
+ENROLLMENTS_FILE = "data/enrollments.json"
+
+MENU = """
+=== Сервис обучения сотрудников ===
+1. Показать курсы
+2. Найти курс по названию
+3. Проверить длительность курса
+4. Добавить курс
+5. Показать сотрудников
+6. Добавить сотрудника
+7. Назначить курс сотруднику
+8. Обновить прогресс прохождения курса
+9. Отменить назначение курса
+10. Показать назначения курсов
+0. Выход
+"""
 
 
-def get_course_info(name: str, category: str, lessons: int) -> str:
-    """Возвращает строку с информацией о курсе."""
-    return f"Курс: {name} ({category}), всего уроков: {lessons}"
+def add_new_course(courses: List[dict]) -> None:
+    """Сценарий добавления нового курса."""
+    title = input_str("Название курса: ")
+    category = input_str("Категория курса: ")
+    total_lessons = input_int("Количество уроков: ")
+    course = add_course(courses, title, category, total_lessons)
+    print(f"Курс добавлен: {course['title']}")
 
 
-def check_lessons_completion(lessons_completed: int, total: int) -> str:
-    """Проверяет, все ли уроки пройдены."""
-    if lessons_completed == total:
-        return "Все уроки пройдены"
-    return f"Пройдено {lessons_completed} из {total} уроков"
+def add_new_employee(employees: List[dict]) -> None:
+    """Сценарий добавления нового сотрудника."""
+    full_name = input_str("ФИО сотрудника: ")
+    department = input_str("Отдел: ")
+    employee = add_employee(employees, full_name, department)
+    print(f"Сотрудник добавлен: {employee['full_name']}")
 
 
-def calculate_status(accuracy: int, is_on_time: bool, all_lessons_done: bool) -> str:
-    """Определяет итоговый статус прохождения курса."""
-    if not all_lessons_done:
-        return "Курс не завершён: не все уроки пройдены"
-    if accuracy < 80:
-        return f"Тест не сдан. Результат: {accuracy}% (порог — 80%)"
-    if not is_on_time:
-        return "Курс пройден, но с нарушением сроков"
-    if accuracy >= 90:
-        return "Курс пройден на отлично! Сертификат выдан."
-    return "Курс пройден успешно. Сертификат выдан."
+def create_new_enrollment(
+    enrollments: List[dict],
+    courses: List[dict],
+    employees: List[dict],
+) -> None:
+    """Сценарий назначения курса сотруднику."""
+    course_id = input_int("ID курса: ")
+    course = find_course_by_id(courses, course_id)
+    if course is None:
+        print("Курс не найден")
+        return
+
+    employee_id = input_int("ID сотрудника: ")
+    employee = find_employee_by_id(employees, employee_id)
+    if employee is None:
+        print("Сотрудник не найден")
+        return
+
+    deadline = input_date("Срок сдачи (ГГГГ-ММ-ДД): ")
+    total_questions = input_int("Количество вопросов итогового теста: ")
+
+    enrollment = create_enrollment(
+        enrollments, employee_id, course_id, deadline, total_questions
+    )
+    if enrollment is None:
+        print("У сотрудника уже есть активное назначение на этот курс")
+        return
+    print(f"Назначение создано: id={enrollment['id']}")
+
+
+def update_enrollment_progress(
+    enrollments: List[dict],
+    courses: List[dict],
+) -> None:
+    """Сценарий обновления прогресса прохождения курса."""
+    enrollment_id = input_int("ID назначения: ")
+    lessons_completed = input_int("Пройдено уроков: ")
+    correct_answers = input_int("Правильных ответов: ")
+    if not update_progress(
+        enrollments, enrollment_id, lessons_completed, correct_answers
+    ):
+        print("Назначение не найдено")
+        return
+
+    enrollment = next(
+        (e for e in enrollments if e["id"] == enrollment_id), None
+    )
+    course = find_course_by_id(courses, enrollment["course_id"])
+    print(get_enrollment_status(enrollment, course))
+
+
+def cancel_existing_enrollment(enrollments: List[dict]) -> None:
+    """Сценарий отмены назначения курса."""
+    enrollment_id = input_int("ID назначения: ")
+    if cancel_enrollment(enrollments, enrollment_id):
+        print("Назначение отменено")
+    else:
+        print("Назначение не найдено")
 
 
 def main() -> None:
     """Основной сценарий программы."""
-    print(get_course_info(COURSE_NAME, COURSE_CATEGORY, TOTAL_LESSONS))
-    
-    lessons_completed = 10
-    correct_answers = 17
-    total_questions = 20
-    deadline = date(2026, 9, 30)
-    today = date.today()
-    
-    all_lessons_done = (lessons_completed == TOTAL_LESSONS)
-    accuracy = int((correct_answers / total_questions) * 100) if total_questions > 0 else 0
-    is_on_time = (today <= deadline)
-    
-    status = calculate_status(accuracy, is_on_time, all_lessons_done)
-    lessons_status = check_lessons_completion(lessons_completed, TOTAL_LESSONS)
-    
-    print(f"\nСотрудник: {EMPLOYEE_NAME} ({DEPARTMENT})")
-    print(f"Прогресс: {lessons_status}")
-    print(f"Точность ответов: {accuracy}%")
-    print(f"Итоговый статус: {status}")
+    courses = load_courses(COURSES_FILE)
+    employees = load_employees(EMPLOYEES_FILE)
+    enrollments = load_enrollments(ENROLLMENTS_FILE)
+
+    while True:
+        print(MENU)
+        choice = input("Выберите действие: ").strip()
+
+        if choice == "1":
+            show_courses(courses)
+        elif choice == "2":
+            query = input_str("Название или часть названия: ")
+            show_courses(find_course(courses, query))
+        elif choice == "3":
+            course_id = input_int("ID курса: ")
+            min_lessons = input_int("Минимальное количество уроков: ")
+            course = find_course_by_id(courses, course_id)
+            if course is None:
+                print("Курс не найден")
+            else:
+                print(check_course_lessons(course, min_lessons))
+        elif choice == "4":
+            add_new_course(courses)
+        elif choice == "5":
+            show_employees(employees)
+        elif choice == "6":
+            add_new_employee(employees)
+        elif choice == "7":
+            create_new_enrollment(enrollments, courses, employees)
+        elif choice == "8":
+            update_enrollment_progress(enrollments, courses)
+        elif choice == "9":
+            cancel_existing_enrollment(enrollments)
+        elif choice == "10":
+            show_enrollments(enrollments, courses, employees)
+        elif choice == "0":
+            break
+        else:
+            print("Неизвестная команда")
+
+    save_courses(COURSES_FILE, courses)
+    save_employees(EMPLOYEES_FILE, employees)
+    save_enrollments(ENROLLMENTS_FILE, enrollments)
+    print("Данные сохранены. До свидания!")
 
 
 if __name__ == "__main__":
