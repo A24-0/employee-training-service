@@ -1,5 +1,3 @@
-"""Функции сохранения и загрузки объектов в формате JSON."""
-
 import json
 from datetime import date
 from typing import List
@@ -10,7 +8,6 @@ from models.employees import find_employee_by_id
 
 
 def _load(filename: str) -> list:
-    """Загрузить список данных из JSON-файла."""
     try:
         with open(filename, "r", encoding="utf-8") as file:
             return json.load(file)
@@ -22,18 +19,15 @@ def _load(filename: str) -> list:
 
 
 def _save(filename: str, data: list) -> None:
-    """Сохранить список данных в JSON-файл."""
     with open(filename, "w", encoding="utf-8") as file:
         json.dump(data, file, ensure_ascii=False, indent=2)
 
 
 def load_courses(filename: str) -> List[Course]:
-    """Загрузить курсы из JSON-файла и преобразовать их в объекты Course."""
     return [Course.from_data(item) for item in _load(filename)]
 
 
 def save_courses(filename: str, courses: List[Course]) -> None:
-    """Сохранить объекты Course в JSON-файл."""
     data = [
         {
             "id": course.id,
@@ -47,12 +41,10 @@ def save_courses(filename: str, courses: List[Course]) -> None:
 
 
 def load_employees(filename: str) -> List[Employee]:
-    """Загрузить сотрудников из JSON-файла и создать объекты Employee."""
     return [Employee.from_data(item) for item in _load(filename)]
 
 
 def save_employees(filename: str, employees: List[Employee]) -> None:
-    """Сохранить объекты Employee в JSON-файл."""
     data = [
         {
             "id": employee.id,
@@ -69,7 +61,6 @@ def load_enrollments(
     courses: List[Course],
     employees: List[Employee],
 ) -> List[Enrollment]:
-    """Загрузить назначения курсов и восстановить связи с Course и Employee."""
     enrollments = []
     for item in _load(filename):
         course = find_course_by_id(courses, item["course_id"])
@@ -91,7 +82,6 @@ def load_enrollments(
 
 
 def save_enrollments(filename: str, enrollments: List[Enrollment]) -> None:
-    """Сохранить объекты Enrollment в JSON-файл (по идентификаторам связей)."""
     data = [
         {
             "id": enrollment.id,

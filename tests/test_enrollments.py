@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from models import Course, Employee
+from models import Course, Employee, EnrollmentStatus
 from models.enrollments import (
     Enrollment,
     cancel_enrollment,
@@ -60,11 +60,15 @@ def test_enrollment_str_and_composition():
 
 
 def test_calculate_status_not_finished():
-    assert "не все уроки" in Enrollment.calculate_status(90, True, False)
+    assert "не все уроки" in EnrollmentStatus.calculate(90, True, False)
 
 
 def test_calculate_status_success():
-    assert "отлично" in Enrollment.calculate_status(95, True, True)
+    assert "отлично" in EnrollmentStatus.calculate(95, True, True)
+
+
+def test_calculate_status_failed_test():
+    assert "не сдан" in EnrollmentStatus.calculate(70, True, True)
 
 
 def test_enrollment_status_uses_progress():

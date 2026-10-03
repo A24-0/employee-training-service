@@ -1,10 +1,7 @@
-"""Вспомогательные функции безопасного ввода данных."""
-
 from datetime import date
 
 
 def input_int(prompt: str) -> int:
-    """Запросить у пользователя целое число."""
     while True:
         try:
             return int(input(prompt))
@@ -13,7 +10,6 @@ def input_int(prompt: str) -> int:
 
 
 def input_date(prompt: str) -> date:
-    """Запросить у пользователя дату в формате ГГГГ-ММ-ДД."""
     while True:
         try:
             return date.fromisoformat(input(prompt))
@@ -22,7 +18,6 @@ def input_date(prompt: str) -> date:
 
 
 def input_str(prompt: str) -> str:
-    """Запросить у пользователя непустую строку."""
     while True:
         value = input(prompt).strip()
         if value:

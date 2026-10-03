@@ -1,5 +1,3 @@
-"""Точка входа сервиса обучения сотрудников."""
-
 from typing import List
 
 from models import Course, Employee, Enrollment
@@ -42,7 +40,6 @@ MENU = """
 
 
 def add_new_course(courses: List[Course]) -> None:
-    """Сценарий добавления нового курса."""
     title = input_str("Название курса: ")
     category = input_str("Категория курса: ")
     total_lessons = input_int("Количество уроков: ")
@@ -51,7 +48,6 @@ def add_new_course(courses: List[Course]) -> None:
 
 
 def add_new_employee(employees: List[Employee]) -> None:
-    """Сценарий добавления нового сотрудника."""
     full_name = input_str("ФИО сотрудника: ")
     department = input_str("Отдел: ")
     employee = add_employee(employees, full_name, department)
@@ -63,7 +59,6 @@ def create_new_enrollment(
     courses: List[Course],
     employees: List[Employee],
 ) -> None:
-    """Сценарий назначения курса сотруднику."""
     course_id = input_int("ID курса: ")
     course = find_course_by_id(courses, course_id)
     if course is None:
@@ -89,7 +84,6 @@ def create_new_enrollment(
 
 
 def update_enrollment_progress(enrollments: List[Enrollment]) -> None:
-    """Сценарий обновления прогресса прохождения курса."""
     enrollment_id = input_int("ID назначения: ")
     lessons_completed = input_int("Пройдено уроков: ")
     correct_answers = input_int("Правильных ответов: ")
@@ -104,7 +98,6 @@ def update_enrollment_progress(enrollments: List[Enrollment]) -> None:
 
 
 def cancel_existing_enrollment(enrollments: List[Enrollment]) -> None:
-    """Сценарий отмены назначения курса."""
     enrollment_id = input_int("ID назначения: ")
     if cancel_enrollment(enrollments, enrollment_id):
         print("Назначение отменено")
@@ -113,7 +106,6 @@ def cancel_existing_enrollment(enrollments: List[Enrollment]) -> None:
 
 
 def main() -> None:
-    """Основной сценарий программы."""
     courses = load_courses(COURSES_FILE)
     employees = load_employees(EMPLOYEES_FILE)
     enrollments = load_enrollments(ENROLLMENTS_FILE, courses, employees)
