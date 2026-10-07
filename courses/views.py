@@ -1,4 +1,5 @@
 from django.http import HttpResponse
+from django.utils.html import escape
 
 from homepage.views import page
 from models.courses import find_course_by_id
@@ -24,6 +25,21 @@ def courses(request):
 
 
 def course_detail(request, course_id):
+    try:
+        course_id = int(course_id)
+    except ValueError:
+        content = f"""
+        <h1 class="text-danger">Некорректный ID курса</h1>
+        <p>ID должен быть числом, а получено: «{escape(course_id)}»</p>
+        <a href="/courses/" class="btn btn-outline-secondary">
+            ← к списку курсов
+        </a>
+        """
+        return HttpResponse(
+            page("Некорректный ID", content),
+            status=400,
+        )
+
     course = find_course_by_id(load_courses(COURSES_FILE), course_id)
 
     if course is None:
