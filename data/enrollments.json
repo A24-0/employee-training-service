@@ -28,5 +28,35 @@
     "correct_answers": 0,
     "total_questions": 10,
     "is_cancelled": true
+  },
+  {
+    "id": 4,
+    "course_id": 1,
+    "employee_id": 2,
+    "deadline": "2026-11-30",
+    "lessons_completed": 6,
+    "correct_answers": 0,
+    "total_questions": 20,
+    "is_cancelled": false
+  },
+  {
+    "id": 5,
+    "course_id": 2,
+    "employee_id": 3,
+    "deadline": "2026-12-15",
+    "lessons_completed": 6,
+    "correct_answers": 12,
+    "total_questions": 15,
+    "is_cancelled": false
+  },
+  {
+    "id": 6,
+    "course_id": 2,
+    "employee_id": 1,
+    "deadline": "2026-10-15",
+    "lessons_completed": 4,
+    "correct_answers": 0,
+    "total_questions": 15,
+    "is_cancelled": false
   }
 ]

@@ -15,10 +15,10 @@
                         Назначение №{{ enrollment.id }}
                     </a>
                     <div>
-                        {{ enrollment.employee.full_name }} — {{ enrollment.course.title }}
+                        {{ enrollment.employee_name }} — {{ enrollment.course_title }}
                     </div>
                     <small class="text-muted">
-                        Срок сдачи: {{ enrollment.deadline|date:"d.m.Y" }}
+                        Срок сдачи: {{ enrollment.deadline }}
                     </small>
                 </div>
                 {% include "enrollments/includes/enrollment_status.html" %}

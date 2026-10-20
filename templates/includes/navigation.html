@@ -9,8 +9,12 @@
             href="{% url 'courses:list' %}"
         >Курсы</a>
         <a
-            class="nav-link {% if section == 'enrollments' %}active{% endif %}"
+            class="nav-link {% if section == 'enrollments' and request.resolver_match.url_name != 'statistics' %}active{% endif %}"
             href="{% url 'enrollments:list' %}"
         >Назначения</a>
+        <a
+            class="nav-link {% if request.resolver_match.url_name == 'statistics' %}active{% endif %}"
+            href="{% url 'enrollments:statistics' %}"
+        >Статистика</a>
     </nav>
 {% endwith %}
