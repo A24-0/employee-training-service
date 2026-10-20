@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if enrollment %}
+        Назначение №{{ enrollment.id }} – Сервис обучения сотрудников
+    {% else %}
+        Назначение не найдено – Сервис обучения сотрудников
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% if enrollment %}
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title h3">Назначение №{{ enrollment.id }}</h1>
+                <p class="card-text">
+                    <strong>Сотрудник:</strong> {{ enrollment.employee.full_name }}
+                    ({{ enrollment.employee.department|default:"отдел не указан" }})
+                </p>
+                <p class="card-text">
+                    <strong>Курс:</strong>
+                    <a href="{% url 'courses:detail' enrollment.course.id %}">
+                        {{ enrollment.course.title }}
+                    </a>
+                </p>
+                <p class="card-text">
+                    <strong>Срок сдачи:</strong> {{ enrollment.deadline|date:"d.m.Y" }}
+                </p>
+                <p class="card-text">
+                    <strong>Прогресс:</strong>
+                    {{ enrollment.lessons_completed }} из
+                    {{ enrollment.course.total_lessons }} уроков
+                    {% if enrollment.is_lessons_done %}
+                        <span class="text-success">(все уроки пройдены)</span>
+                    {% endif %}
+                </p>
+                <p class="card-text">
+                    <strong>Статус:</strong>
+                    {% include "enrollments/includes/enrollment_status.html" %}
+                </p>
+                <p class="card-text">
+                    <strong>Итог:</strong> {{ enrollment.status }}
+                </p>
+            </div>
+        </div>
+    {% else %}
+        <h1 class="text-danger">Назначение не найдено</h1>
+        <p>Назначение с указанным идентификатором отсутствует.</p>
+    {% endif %}
+
+    <a href="{% url 'enrollments:list' %}" class="btn btn-outline-secondary mt-3">
+        ← к списку назначений
+    </a>
+{% endblock %}

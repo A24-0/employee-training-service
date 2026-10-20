@@ -8,5 +8,25 @@
     "correct_answers": 18,
     "total_questions": 20,
     "is_cancelled": false
+  },
+  {
+    "id": 2,
+    "course_id": 2,
+    "employee_id": 2,
+    "deadline": "2026-11-15",
+    "lessons_completed": 3,
+    "correct_answers": 0,
+    "total_questions": 15,
+    "is_cancelled": false
+  },
+  {
+    "id": 3,
+    "course_id": 3,
+    "employee_id": 1,
+    "deadline": "2026-10-01",
+    "lessons_completed": 2,
+    "correct_answers": 0,
+    "total_questions": 10,
+    "is_cancelled": true
   }
 ]

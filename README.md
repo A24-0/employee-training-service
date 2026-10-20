@@ -3,13 +3,15 @@
 ## Назначение
 Приложение предназначено для автоматизации процессов корпоративного обучения и развития персонала. Оно решает проблему ручного учета прохождения тренингов, помогает HR-отделам и руководителям контролировать развитие навыков сотрудников, назначать обязательные программы обучения и отслеживать успеваемость в едином цифровом пространстве.
 
-Консольная версия приложения (ПР1–ПР3) дополнена веб-интерфейсом на Django (ПР5).
+Консольная версия приложения (ПР1–ПР3) дополнена веб-интерфейсом на Django (ПР5), который в ПР6 переведён на систему шаблонов Django: view-функции готовят данные, а HTML формируют шаблоны.
 
 ## Используемые технологии
 - Python 3;
 - Django 5.2 — веб-фреймворк;
-- HTML — разметка веб-страниц;
-- Bootstrap 5.3 — оформление страниц (подключается через CDN);
+- Django Template Language (DTL) — шаблоны страниц;
+- HTML5, CSS3, JavaScript — разметка, собственное оформление и поведение страниц;
+- Bootstrap 5.3 — базовая вёрстка (подключается через CDN);
+- JSON — хранение данных;
 - pytest — автоматизированные тесты;
 - flake8 — проверка качества кода.
 
@@ -37,7 +39,62 @@
 - `/enrollments/` — список назначений курсов из `data/enrollments.json` (view-функция `enrollments()`);
 - `/enrollments/<int:enrollment_id>/` — страница назначения, включая итоговый статус `enrollment.status()` (view-функция `enrollment_detail()`).
 
-Если курс или назначение с указанным идентификатором не найдено, соответствующая страница возвращает код статуса 404.
+Если курс или назначение с указанным идентификатором не найдено, страница выводит сообщение «Курс не найден» / «Назначение не найдено» (ветка `{% else %}` в шаблоне) и возвращает код статуса 404 (`render(..., status=404)`). Для прочих несуществующих адресов предусмотрен шаблон `templates/404.html` (используется Django при `DEBUG = False`).
+
+Все страницы формируются Django-шаблонами через `render(request, "шаблон.html", context)`. Генерация HTML в Python-коде веб-представлений не используется; функция `page()` из ПР5 удалена.
+
+## Django Template Language
+
+### Базовый шаблон и наследование
+Общий каркас страниц — `templates/base.html` (каталог шаблонов уровня проекта подключён в `settings.py` через `TEMPLATES["DIRS"] = [BASE_DIR / "templates"]`). В нём находятся объявление документа, подключение Bootstrap, собственного CSS и JavaScript, шапка с логотипом, навигация и подвал. Дочерние шаблоны начинаются с `{% extends "base.html" %}` и переопределяют блоки:
+- `{% block title %}` — заголовок вкладки браузера;
+- `{% block content %}` — содержимое страницы.
+
+### Включаемые шаблоны
+Повторяющиеся фрагменты вынесены в отдельные файлы и подключаются через `{% include %}`:
+- `templates/includes/navigation.html` — навигация сайта (подсвечивает текущий раздел по `request.resolver_match.namespace`);
+- `courses/includes/course_card.html` — карточка одного курса в списке;
+- `enrollments/includes/enrollment_status.html` — бейдж статуса назначения «Активно» / «Отменено»; используется и в списке, и на странице назначения.
+
+### Контекст, циклы и условия
+View-функции передают данные в шаблон через словарь контекста, например:
+```python
+context = {"courses": load_courses(COURSES_FILE)}
+return render(request, "courses/course_list.html", context)
+```
+В шаблонах используются:
+- `{% for course in courses %} … {% empty %} … {% endfor %}` — вывод списков и обработка пустой коллекции;
+- `{% if enrollment.is_cancelled %}` — отображение статуса назначения;
+- `{% if course %} … {% else %} … {% endif %}` — страница «не найдено»;
+- `{% if enrollment.is_lessons_done %}` — отметка о прохождении всех уроков.
+
+### Фильтры
+- `{{ courses|length }}`, `{{ enrollments|length }}` — количество элементов;
+- `{{ course.title|default:"Без названия" }}`, `{{ enrollment.employee.department|default:"отдел не указан" }}` — значение по умолчанию;
+- `{{ enrollment.deadline|date:"d.m.Y" }}` — формат даты срока сдачи (`deadline` хранится как объект `date`).
+
+Фильтры используются только для представления данных; бизнес-логика (расчёт итогового статуса, точности ответов) остаётся в классах `Enrollment` и `EnrollmentStatus`.
+
+## URL-маршрутизация
+Для каждого приложения задано пространство имён (`app_name`) и имена маршрутов:
+
+| Имя маршрута | Адрес |
+|---|---|
+| `homepage:index` | `/` |
+| `courses:list` | `/courses/` |
+| `courses:detail` | `/courses/<int:course_id>/` |
+| `enrollments:list` | `/enrollments/` |
+| `enrollments:detail` | `/enrollments/<int:enrollment_id>/` |
+
+Все ссылки в шаблонах строятся через `{% url %}`, например `{% url 'courses:detail' course.id %}`; жёстко заданные адреса не используются.
+
+## Статические файлы
+Статические файлы проекта лежат в `homepage/static/homepage/` и подключаются в `base.html` после `{% load static %}`:
+- `css/style.css` — собственные стили: шапка, логотип, активный пункт меню, карточки курсов (`.course-card`), статусы назначений (`.enrollment-status`), подвал;
+- `js/main.js` — выводит текущий год в подвале страницы;
+- `img/logo.png` — логотип сервиса в шапке.
+
+Проверка поиска статического файла: `python manage.py findstatic homepage/img/logo.png`.
 
 Отдельного Django-приложения для сотрудников нет: как и в случае с `django.contrib.auth.User`, сотрудник в дальнейшем станет точкой входа для аутентификации, поэтому отдельная предметная область для него пока не выделяется — данные `Employee` используются внутри `enrollments`.
 
@@ -86,33 +143,52 @@ employee-training-service/
 │   ├── asgi.py
 │   └── wsgi.py
 │
+├── templates/
+│   ├── includes/
+│   │   └── navigation.html
+│   ├── 404.html
+│   └── base.html
+│
 ├── homepage/
-│   ├── __init__.py
-│   ├── admin.py
-│   ├── apps.py
+│   ├── static/
+│   │   └── homepage/
+│   │       ├── css/
+│   │       │   └── style.css
+│   │       ├── img/
+│   │       │   └── logo.png
+│   │       └── js/
+│   │           └── main.js
+│   ├── templates/
+│   │   └── homepage/
+│   │       └── index.html
 │   ├── migrations/
-│   ├── models.py
-│   ├── tests.py
+│   ├── apps.py
 │   ├── urls.py
 │   └── views.py
 │
 ├── courses/
-│   ├── __init__.py
-│   ├── admin.py
-│   ├── apps.py
+│   ├── templates/
+│   │   └── courses/
+│   │       ├── includes/
+│   │       │   └── course_card.html
+│   │       ├── course_detail.html
+│   │       └── course_list.html
 │   ├── migrations/
+│   ├── apps.py
 │   ├── models.py
-│   ├── tests.py
 │   ├── urls.py
 │   └── views.py
 │
 ├── enrollments/
-│   ├── __init__.py
-│   ├── admin.py
-│   ├── apps.py
+│   ├── templates/
+│   │   └── enrollments/
+│   │       ├── includes/
+│   │       │   └── enrollment_status.html
+│   │       ├── enrollment_detail.html
+│   │       └── enrollment_list.html
 │   ├── migrations/
+│   ├── apps.py
 │   ├── models.py
-│   ├── tests.py
 │   ├── urls.py
 │   └── views.py
 │
@@ -142,13 +218,16 @@ employee-training-service/
 Пакет настроек Django-проекта: `settings.py` — настройки проекта; `urls.py` — маршрутизация верхнего уровня (подключает `homepage`, `courses`, `enrollments` через `include()`); `asgi.py`, `wsgi.py` — точки взаимодействия с сервером.
 
 ### `homepage/`
-Django-приложение, отвечающее за главную страницу: `views.py` содержит функцию `page()` (общий HTML-каркас с Bootstrap и навигацией) и view-функцию `index()`. Функция `page()` размещена здесь, потому что главная страница задаёт общий вид всех остальных страниц; остальные приложения импортируют её.
+Django-приложение, отвечающее за главную страницу: view-функция `index()` формирует страницу из шаблона `homepage/index.html`. Также в приложении хранятся общие статические файлы проекта (CSS, JavaScript, логотип).
+
+### `templates/`
+Шаблоны уровня проекта: базовый шаблон `base.html`, навигация `includes/navigation.html` и страница ошибки `404.html`.
 
 ### `courses/`
-Django-приложение, отвечающее за курсы: `views.py` — view-функции `courses()` и `course_detail()`; `urls.py` — маршруты приложения; `models.py` — Django-модели (заполняется в следующих работах).
+Django-приложение, отвечающее за курсы: `views.py` — view-функции `courses()` и `course_detail()`; `templates/courses/` — шаблоны страниц; `urls.py` — маршруты приложения (`app_name = "courses"`); `models.py` — Django-модели (заполняется в следующих работах).
 
 ### `enrollments/`
-Django-приложение, отвечающее за назначения курсов: `views.py` — view-функции `enrollments()` и `enrollment_detail()`; `urls.py` — маршруты приложения; `models.py` — Django-модели (заполняется в следующих работах).
+Django-приложение, отвечающее за назначения курсов: `views.py` — view-функции `enrollments()` и `enrollment_detail()`; `templates/enrollments/` — шаблоны страниц; `urls.py` — маршруты приложения (`app_name = "enrollments"`); `models.py` — Django-модели (заполняется в следующих работах).
 
 ### `models/`
 Классы предметной области и функции работы с ними (пакет ПР3): `courses.py` — класс `Course` и функции работы с курсами; `employees.py` — класс `Employee` и функции работы с сотрудниками; `enrollments.py` — класс `Enrollment` и функции работы с назначениями.
@@ -210,10 +289,20 @@ flake8
 - навигация между страницами;
 - оформление Bootstrap 5.3.
 
+Реализовано (ПР6):
+- переход на Django Template Language, отказ от функции `page()`;
+- базовый шаблон `base.html`, наследование (`extends`) и блоки (`block`);
+- включаемые шаблоны (`include`): навигация, карточка курса, статус назначения;
+- передача данных через контекст, циклы `for … empty` и условия `if`;
+- пространства имён URL и ссылки через `{% url %}`;
+- фильтры `length`, `default`, `date`;
+- статические файлы: собственный CSS, JavaScript и логотип.
+
+Данные по-прежнему хранятся в JSON-файлах; Django ORM, база данных и формы в текущей версии не используются.
+
 Планируется:
 - перенос сущностей `Course`, `Employee` и `Enrollment` в Django ORM;
 - подключение базы данных;
-- переход на шаблоны (`templates/`) и отказ от функции `page()`;
 - формы создания курсов, назначений и обновления прогресса;
 - реализация пользователей (аутентификация сотрудников);
 - разработка API;

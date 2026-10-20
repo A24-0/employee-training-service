@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if course %}
+        {{ course.title }} – Сервис обучения сотрудников
+    {% else %}
+        Курс не найден – Сервис обучения сотрудников
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% if course %}
+        <div class="card course-card">
+            <div class="card-body">
+                <h1 class="card-title h3">{{ course.title }}</h1>
+                <p class="card-text">
+                    <strong>ID:</strong> {{ course.id }}
+                </p>
+                <p class="card-text">
+                    <strong>Категория:</strong> {{ course.category|default:"не указана" }}
+                </p>
+                <p class="card-text">
+                    <strong>Количество уроков:</strong> {{ course.total_lessons }}
+                </p>
+            </div>
+        </div>
+    {% else %}
+        <h1 class="text-danger">Курс не найден</h1>
+        <p>Курс с указанным идентификатором отсутствует.</p>
+    {% endif %}
+
+    <a href="{% url 'courses:list' %}" class="btn btn-outline-secondary mt-3">
+        ← к списку курсов
+    </a>
+{% endblock %}

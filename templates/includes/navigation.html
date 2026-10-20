@@ -1,0 +1,16 @@
+{% with section=request.resolver_match.namespace %}
+    <nav class="nav site-nav">
+        <a
+            class="nav-link {% if section == 'homepage' %}active{% endif %}"
+            href="{% url 'homepage:index' %}"
+        >Главная</a>
+        <a
+            class="nav-link {% if section == 'courses' %}active{% endif %}"
+            href="{% url 'courses:list' %}"
+        >Курсы</a>
+        <a
+            class="nav-link {% if section == 'enrollments' %}active{% endif %}"
+            href="{% url 'enrollments:list' %}"
+        >Назначения</a>
+    </nav>
+{% endwith %}

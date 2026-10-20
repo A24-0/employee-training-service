@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Главная – Сервис обучения сотрудников{% endblock %}
+
+{% block content %}
+    <h1 class="display-5">Сервис обучения сотрудников</h1>
+
+    <p class="lead">
+        Учёт курсов и прохождения обучения сотрудниками.
+    </p>
+    <p>
+        Сервис помогает HR-отделу и руководителям назначать сотрудникам
+        курсы, следить за прогрессом и сроками сдачи.
+    </p>
+
+    <p>Основные разделы:</p>
+    <a href="{% url 'courses:list' %}" class="btn btn-primary me-2">Курсы</a>
+    <a href="{% url 'enrollments:list' %}" class="btn btn-secondary">Назначения</a>
+{% endblock %}

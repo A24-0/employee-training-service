@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Курсы – Сервис обучения сотрудников{% endblock %}
+
+{% block content %}
+    <h1>Курсы</h1>
+
+    <p class="text-muted">Всего курсов: {{ courses|length }}</p>
+
+    {% for course in courses %}
+        {% include "courses/includes/course_card.html" %}
+    {% empty %}
+        <p>Курсы не найдены.</p>
+    {% endfor %}
+{% endblock %}

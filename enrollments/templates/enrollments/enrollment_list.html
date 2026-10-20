@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Назначения – Сервис обучения сотрудников{% endblock %}
+
+{% block content %}
+    <h1>Назначения курсов</h1>
+
+    <p class="text-muted">Всего назначений: {{ enrollments|length }}</p>
+
+    <ul class="list-group">
+        {% for enrollment in enrollments %}
+            <li class="list-group-item enrollment-item d-flex justify-content-between align-items-center">
+                <div>
+                    <a href="{% url 'enrollments:detail' enrollment.id %}">
+                        Назначение №{{ enrollment.id }}
+                    </a>
+                    <div>
+                        {{ enrollment.employee.full_name }} — {{ enrollment.course.title }}
+                    </div>
+                    <small class="text-muted">
+                        Срок сдачи: {{ enrollment.deadline|date:"d.m.Y" }}
+                    </small>
+                </div>
+                {% include "enrollments/includes/enrollment_status.html" %}
+            </li>
+        {% empty %}
+            <li class="list-group-item">Назначения не найдены.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

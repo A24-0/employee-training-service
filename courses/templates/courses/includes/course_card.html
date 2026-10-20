@@ -1,0 +1,13 @@
+<article class="card course-card mb-3">
+    <div class="card-body">
+        <h2 class="card-title h5">
+            {{ course.title|default:"Без названия" }}
+        </h2>
+        <p class="card-text">
+            {{ course.category }} · {{ course.total_lessons }} уроков
+        </p>
+        <a href="{% url 'courses:detail' course.id %}" class="btn btn-primary btn-sm">
+            Подробнее
+        </a>
+    </div>
+</article>

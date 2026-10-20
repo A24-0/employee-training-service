@@ -1,0 +1,9 @@
+{% if enrollment.is_cancelled %}
+    <span class="badge bg-secondary enrollment-status enrollment-status-cancelled">
+        Отменено
+    </span>
+{% else %}
+    <span class="badge bg-success enrollment-status enrollment-status-active">
+        Активно
+    </span>
+{% endif %}
