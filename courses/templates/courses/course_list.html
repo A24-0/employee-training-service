@@ -7,6 +7,10 @@
 
     <p class="text-muted">Всего курсов: {{ courses|length }}</p>
 
+    <a href="{% url 'courses:available' %}" class="btn btn-outline-primary mb-3">
+        Подобрать курс сотруднику
+    </a>
+
     {% for course in courses %}
         {% include "courses/includes/course_card.html" %}
     {% empty %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика – Сервис обучения сотрудников{% endblock %}
+
+{% block content %}
+    <h1>Статистика обучения</h1>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4">
+            <div class="card stat-card"><div class="card-body">
+                <div class="stat-value">{{ active_count }}</div>
+                <div class="text-muted">активных назначений</div>
+            </div></div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card stat-card"><div class="card-body">
+                <div class="stat-value">{{ summary.courses_count }}</div>
+                <div class="text-muted">курсов в каталоге</div>
+            </div></div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card stat-card"><div class="card-body">
+                <div class="stat-value">{{ summary.avg_lessons }}</div>
+                <div class="text-muted">
+                    уроков в среднем (от {{ summary.min_lessons }} до {{ summary.max_lessons }})
+                </div>
+            </div></div>
+        </div>
+    </div>
+
+    <h2 class="h4">Назначения по курсам</h2>
+    <table class="table table-sm stat-table">
+        <thead><tr><th>Курс</th><th>Активных назначений</th></tr></thead>
+        <tbody>
+            {% for item in by_course %}
+                <tr><td>{{ item.course_title }}</td><td>{{ item.enrollments_count }}</td></tr>
+            {% empty %}
+                <tr><td colspan="2">Данные отсутствуют.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2 class="h4">Назначения по отделам</h2>
+    <table class="table table-sm stat-table">
+        <thead><tr><th>Отдел</th><th>Активных назначений</th></tr></thead>
+        <tbody>
+            {% for item in by_department %}
+                <tr><td>{{ item.department }}</td><td>{{ item.enrollments_count }}</td></tr>
+            {% empty %}
+                <tr><td colspan="2">Данные отсутствуют.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2 class="h4">Популярные курсы (больше одного сотрудника)</h2>
+    <ul>
+        {% for item in popular %}
+            <li>{{ item.course_title }} — {{ item.enrollments_count }}</li>
+        {% empty %}
+            <li>Таких курсов пока нет.</li>
+        {% endfor %}
+    </ul>
+
+    <h2 class="h4">Просроченные незавершённые назначения</h2>
+    <ul>
+        {% for item in overdue %}
+            <li>
+                <a href="{% url 'enrollments:detail' item.id %}">№{{ item.id }}</a>
+                {{ item.employee_name }} — {{ item.course_title }}, срок {{ item.deadline }}
+            </li>
+        {% empty %}
+            <li>Просроченных назначений нет.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

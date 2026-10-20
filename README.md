@@ -11,7 +11,8 @@
 - Django Template Language (DTL) — шаблоны страниц;
 - HTML5, CSS3, JavaScript — разметка, собственное оформление и поведение страниц;
 - Bootstrap 5.3 — базовая вёрстка (подключается через CDN);
-- JSON — хранение данных;
+- SQLite и модуль `sqlite3` — база данных (ПР7);
+- JSON — исходные данные и хранилище консольной версии;
 - pytest — автоматизированные тесты;
 - flake8 — проверка качества кода.
 
@@ -34,10 +35,14 @@
 
 ## Страницы веб-интерфейса
 - `/` — главная страница: описание приложения и навигация (view-функция `index()`);
-- `/courses/` — список курсов из `data/courses.json` (view-функция `courses()`);
+- `/courses/` — список курсов (view-функция `courses()`);
 - `/courses/<int:course_id>/` — страница курса (view-функция `course_detail()`);
-- `/enrollments/` — список назначений курсов из `data/enrollments.json` (view-функция `enrollments()`);
-- `/enrollments/<int:enrollment_id>/` — страница назначения, включая итоговый статус `enrollment.status()` (view-функция `enrollment_detail()`).
+- `/courses/available/?employee=<id>` — подбор курса сотруднику: курсы, на которые он ещё не назначен (view-функция `available_courses()`);
+- `/enrollments/` — список назначений курсов (view-функция `enrollments()`);
+- `/enrollments/<int:enrollment_id>/` — страница назначения, включая итоговый статус `enrollment.status()` (view-функция `enrollment_detail()`);
+- `/enrollments/statistics/` — статистика обучения (view-функция `statistics()`).
+
+С ПР7 все страницы получают данные из базы SQLite `data/training.sqlite` SQL-запросами.
 
 Если курс или назначение с указанным идентификатором не найдено, страница выводит сообщение «Курс не найден» / «Назначение не найдено» (ветка `{% else %}` в шаблоне) и возвращает код статуса 404 (`render(..., status=404)`). Для прочих несуществующих адресов предусмотрен шаблон `templates/404.html` (используется Django при `DEBUG = False`).
 
@@ -71,7 +76,7 @@ return render(request, "courses/course_list.html", context)
 ### Фильтры
 - `{{ courses|length }}`, `{{ enrollments|length }}` — количество элементов;
 - `{{ course.title|default:"Без названия" }}`, `{{ enrollment.employee.department|default:"отдел не указан" }}` — значение по умолчанию;
-- `{{ enrollment.deadline|date:"d.m.Y" }}` — формат даты срока сдачи (`deadline` хранится как объект `date`).
+- `{{ enrollment.deadline|date:"d.m.Y" }}` — формат даты срока сдачи на странице назначения (`deadline` — объект `date`). В списке назначений дата форматируется в SQL-запросе функцией `strftime()`.
 
 Фильтры используются только для представления данных; бизнес-логика (расчёт итогового статуса, точности ответов) остаётся в классах `Enrollment` и `EnrollmentStatus`.
 
@@ -83,8 +88,10 @@ return render(request, "courses/course_list.html", context)
 | `homepage:index` | `/` |
 | `courses:list` | `/courses/` |
 | `courses:detail` | `/courses/<int:course_id>/` |
+| `courses:available` | `/courses/available/` |
 | `enrollments:list` | `/enrollments/` |
 | `enrollments:detail` | `/enrollments/<int:enrollment_id>/` |
+| `enrollments:statistics` | `/enrollments/statistics/` |
 
 Все ссылки в шаблонах строятся через `{% url %}`, например `{% url 'courses:detail' course.id %}`; жёстко заданные адреса не используются.
 
@@ -100,29 +107,75 @@ return render(request, "courses/course_list.html", context)
 
 ## Основные операции
 
-### Используется в веб-интерфейсе (ПР5)
+### Используется в веб-интерфейсе
 - просмотр списка курсов;
 - просмотр информации о курсе;
+- подбор курсов, которые ещё можно назначить выбранному сотруднику (ПР7);
 - просмотр списка назначений курсов;
-- просмотр информации о назначении, включая итоговый статус прохождения.
+- просмотр информации о назначении, включая итоговый статус прохождения;
+- статистика обучения (ПР7).
 
 ### Отложено до следующих работ
 Эти операции реализованы в ПР2–ПР3 и работают в консольной версии. В веб-интерфейсе они появятся, когда будут добавлены формы и POST-запросы:
 - добавление курса;
 - добавление сотрудника;
 - поиск курса по названию;
-- проверка длительности курса;
 - назначение курса сотруднику;
 - обновление прогресса прохождения курса;
 - отмена назначения курса.
 
 ## Хранение данных
-Данные приложения хранятся в JSON-файлах:
-- `data/courses.json`;
-- `data/employees.json`;
-- `data/enrollments.json`.
 
-При загрузке данные из JSON преобразуются в объекты `Course`, `Employee` и `Enrollment`. При сохранении объекты преобразуются в данные JSON. Для связи назначения с курсом и сотрудником в `enrollments.json` используются их идентификаторы `course_id` и `employee_id`.
+### JSON (ПР2–ПР6)
+Исходные данные лежат в JSON-файлах `data/courses.json`, `data/employees.json`, `data/enrollments.json`. С ними по-прежнему работает консольная версия (`main.py` через `storage.py`). Для связи назначения с курсом и сотрудником в `enrollments.json` используются идентификаторы `course_id` и `employee_id`.
+
+### База данных SQLite (ПР7)
+Веб-версия работает с базой `data/training.sqlite`. Django ORM пока не используется: запросы пишутся на SQL и выполняются через стандартный модуль `sqlite3`.
+
+Таблица `courses`:
+
+| Поле | Тип | Назначение |
+|---|---|---|
+| `id` | INTEGER | первичный ключ |
+| `title` | TEXT | название курса |
+| `category` | TEXT | категория |
+| `total_lessons` | INTEGER | количество уроков |
+
+Таблица `employees`:
+
+| Поле | Тип | Назначение |
+|---|---|---|
+| `id` | INTEGER | первичный ключ |
+| `full_name` | TEXT | ФИО |
+| `department` | TEXT | отдел |
+
+Таблица `enrollments`:
+
+| Поле | Тип | Назначение |
+|---|---|---|
+| `id` | INTEGER | первичный ключ |
+| `course_id` | INTEGER | внешний ключ → `courses.id` |
+| `employee_id` | INTEGER | внешний ключ → `employees.id` |
+| `deadline` | TEXT | срок сдачи в формате `YYYY-MM-DD` |
+| `lessons_completed` | INTEGER | пройдено уроков |
+| `correct_answers` | INTEGER | правильных ответов в тесте |
+| `total_questions` | INTEGER | вопросов в тесте |
+| `is_cancelled` | INTEGER | 0 — активно, 1 — отменено |
+
+Один курс и один сотрудник могут встречаться во многих назначениях; каждое назначение относится к одному курсу и одному сотруднику. Все поля объявлены `NOT NULL`.
+
+Файлы слоя базы данных:
+- `sql/schema.sql` — команды `CREATE TABLE` с первичными и внешними ключами;
+- `sql/queries.sql` — 14 проверенных запросов с комментариями: списки, `WHERE`, `JOIN`, подзапрос `NOT IN`, `COUNT/MIN/MAX/AVG/SUM`, `GROUP BY`, `HAVING`, `LIMIT/OFFSET`;
+- `db/database.py` — подключение (`PRAGMA foreign_keys = ON`) и функции `fetch_all()` / `fetch_one()`, которые возвращают строки `sqlite3.Row` с доступом к полям по имени;
+- `db/import_json.py` — создаёт таблицы по `schema.sql` и переносит данные из JSON (`executemany()`, параметры `?`, `commit()` / `rollback()`). Скрипт можно запускать повторно: перед вставкой таблицы очищаются.
+
+Создание базы и перенос данных:
+```
+python -m db.import_json
+```
+
+Значения от пользователя (id сотрудника, курса, назначения) передаются в SQL только параметрами `?`, без f-строк.
 
 ## Структура проекта
 ```text
@@ -135,6 +188,15 @@ employee-training-service/
 ├── main.py
 ├── storage.py
 ├── utils.py
+│
+├── db/
+│   ├── __init__.py
+│   ├── database.py
+│   └── import_json.py
+│
+├── sql/
+│   ├── schema.sql
+│   └── queries.sql
 │
 ├── training/
 │   ├── __init__.py
@@ -171,6 +233,7 @@ employee-training-service/
 │   │   └── courses/
 │   │       ├── includes/
 │   │       │   └── course_card.html
+│   │       ├── available.html
 │   │       ├── course_detail.html
 │   │       └── course_list.html
 │   ├── migrations/
@@ -185,7 +248,8 @@ employee-training-service/
 │   │       ├── includes/
 │   │       │   └── enrollment_status.html
 │   │       ├── enrollment_detail.html
-│   │       └── enrollment_list.html
+│   │       ├── enrollment_list.html
+│   │       └── statistics.html
 │   ├── migrations/
 │   ├── apps.py
 │   ├── models.py
@@ -201,10 +265,12 @@ employee-training-service/
 ├── data/
 │   ├── courses.json
 │   ├── employees.json
-│   └── enrollments.json
+│   ├── enrollments.json
+│   └── training.sqlite
 │
 └── tests/
     ├── test_courses.py
+    ├── test_database.py
     ├── test_employees.py
     └── test_enrollments.py
 ```
@@ -224,16 +290,19 @@ Django-приложение, отвечающее за главную стран
 Шаблоны уровня проекта: базовый шаблон `base.html`, навигация `includes/navigation.html` и страница ошибки `404.html`.
 
 ### `courses/`
-Django-приложение, отвечающее за курсы: `views.py` — view-функции `courses()` и `course_detail()`; `templates/courses/` — шаблоны страниц; `urls.py` — маршруты приложения (`app_name = "courses"`); `models.py` — Django-модели (заполняется в следующих работах).
+Django-приложение, отвечающее за курсы: `views.py` — view-функции `courses()`, `course_detail()` и `available_courses()` (получают данные из SQLite); `templates/courses/` — шаблоны страниц; `urls.py` — маршруты приложения (`app_name = "courses"`); `models.py` — Django-модели (заполняется в следующих работах).
 
 ### `enrollments/`
-Django-приложение, отвечающее за назначения курсов: `views.py` — view-функции `enrollments()` и `enrollment_detail()`; `templates/enrollments/` — шаблоны страниц; `urls.py` — маршруты приложения (`app_name = "enrollments"`); `models.py` — Django-модели (заполняется в следующих работах).
+Django-приложение, отвечающее за назначения курсов: `views.py` — view-функции `enrollments()`, `enrollment_detail()` и `statistics()` (получают данные из SQLite; на странице назначения из строки базы собирается объект `Enrollment`, чтобы итоговый статус считал метод `status()`); `templates/enrollments/` — шаблоны страниц; `urls.py` — маршруты приложения (`app_name = "enrollments"`); `models.py` — Django-модели (заполняется в следующих работах).
 
 ### `models/`
 Классы предметной области и функции работы с ними (пакет ПР3): `courses.py` — класс `Course` и функции работы с курсами; `employees.py` — класс `Employee` и функции работы с сотрудниками; `enrollments.py` — класс `Enrollment` и функции работы с назначениями.
 
 ### `storage.py`
-Отвечает за загрузку и сохранение данных. Выполняет преобразование JSON → объекты Python и обратно. Используется как консольной, так и веб-версией приложения.
+Отвечает за загрузку и сохранение JSON-данных консольной версии: преобразование JSON → объекты Python и обратно.
+
+### `db/` и `sql/`
+Слой базы данных SQLite (ПР7), описан в разделе «Хранение данных».
 
 ### `utils.py`
 Содержит вспомогательные функции консольного ввода: `input_int()`, `input_date()`, `input_str()`.
@@ -256,9 +325,10 @@ pip install -r requirements.txt
 
 Веб-версия (Django):
 ```
-python manage.py migrate
+python -m db.import_json
 python manage.py runserver
 ```
+Первая команда нужна, если файла `data/training.sqlite` ещё нет или данные в JSON изменились.
 После запуска открыть в браузере адрес `http://127.0.0.1:8000/`.
 
 Консольная версия (сохранена):
@@ -298,11 +368,17 @@ flake8
 - фильтры `length`, `default`, `date`;
 - статические файлы: собственный CSS, JavaScript и логотип.
 
-Данные по-прежнему хранятся в JSON-файлах; Django ORM, база данных и формы в текущей версии не используются.
+Реализовано (ПР7):
+- спроектирована база SQLite: таблицы `courses`, `employees`, `enrollments`, первичные и внешние ключи;
+- схема в `sql/schema.sql`, перенос данных из JSON скриптом `db/import_json.py`;
+- 14 SQL-запросов в `sql/queries.sql`;
+- view-функции получают данные из SQLite через `sqlite3` и `sqlite3.Row`;
+- новые страницы: подбор курса сотруднику и статистика обучения.
+
+Django ORM и формы в текущей версии не используются.
 
 Планируется:
 - перенос сущностей `Course`, `Employee` и `Enrollment` в Django ORM;
-- подключение базы данных;
 - формы создания курсов, назначений и обновления прогресса;
 - реализация пользователей (аутентификация сотрудников);
 - разработка API;

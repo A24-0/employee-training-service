@@ -15,5 +15,6 @@
 
     <p>Основные разделы:</p>
     <a href="{% url 'courses:list' %}" class="btn btn-primary me-2">Курсы</a>
-    <a href="{% url 'enrollments:list' %}" class="btn btn-secondary">Назначения</a>
+    <a href="{% url 'enrollments:list' %}" class="btn btn-secondary me-2">Назначения</a>
+    <a href="{% url 'enrollments:statistics' %}" class="btn btn-outline-secondary">Статистика</a>
 {% endblock %}
