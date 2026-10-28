@@ -5,6 +5,20 @@
 {% block content %}
     <h1>Курсы</h1>
 
+    <form method="get" class="d-flex gap-2 mb-3">
+        <input
+            type="search"
+            name="q"
+            value="{{ query }}"
+            class="form-control w-auto"
+            placeholder="Название или категория"
+        >
+        <button type="submit" class="btn btn-primary">Найти</button>
+        {% if query %}
+            <a href="{% url 'courses:list' %}" class="btn btn-outline-secondary">Сбросить</a>
+        {% endif %}
+    </form>
+
     <p class="text-muted">Всего курсов: {{ courses|length }}</p>
 
     <a href="{% url 'courses:available' %}" class="btn btn-outline-primary mb-3">

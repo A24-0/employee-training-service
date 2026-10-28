@@ -22,6 +22,17 @@
                 <p class="card-text">
                     <strong>Количество уроков:</strong> {{ course.total_lessons }}
                 </p>
+                <h2 class="h5 mt-4">Активные назначения</h2>
+                <ul>
+                    {% for enrollment in active_enrollments %}
+                        <li>
+                            <a href="{% url 'enrollments:detail' enrollment.id %}">№{{ enrollment.id }}</a>
+                            {{ enrollment.employee.full_name }}, срок {{ enrollment.deadline|date:"d.m.Y" }}
+                        </li>
+                    {% empty %}
+                        <li>Активных назначений нет.</li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
     {% else %}

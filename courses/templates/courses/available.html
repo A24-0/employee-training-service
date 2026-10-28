@@ -21,7 +21,11 @@
         <button type="submit" class="btn btn-primary">Найти</button>
     </form>
 
-    {% if employee_id %}
+    {% if error %}
+        <p class="text-danger">{{ error }}</p>
+    {% endif %}
+
+    {% if employee_id and not error %}
         {% for course in courses %}
             {% include "courses/includes/course_card.html" %}
         {% empty %}

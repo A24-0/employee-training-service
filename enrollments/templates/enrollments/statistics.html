@@ -66,7 +66,7 @@
         {% for item in overdue %}
             <li>
                 <a href="{% url 'enrollments:detail' item.id %}">№{{ item.id }}</a>
-                {{ item.employee_name }} — {{ item.course_title }}, срок {{ item.deadline }}
+                {{ item.employee_name }} — {{ item.course_title }}, срок {{ item.deadline|date:"d.m.Y" }}
             </li>
         {% empty %}
             <li>Просроченных назначений нет.</li>
