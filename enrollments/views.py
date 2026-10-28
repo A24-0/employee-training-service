@@ -1,12 +1,14 @@
 from datetime import date
+from typing import Any, Dict
 
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
 from db.database import fetch_all, fetch_one
 from models import Course, Employee, Enrollment
 
 
-def _enrollment_from_row(row):
+def _enrollment_from_row(row: Dict[str, Any]) -> Enrollment:
     course = Course(
         row["course_id"],
         row["course_title"],
@@ -30,7 +32,7 @@ def _enrollment_from_row(row):
     return enrollment
 
 
-def enrollments(request):
+def enrollments(request: HttpRequest) -> HttpResponse:
     enrollments_list = fetch_all(
         """
         SELECT
@@ -51,7 +53,7 @@ def enrollments(request):
     return render(request, "enrollments/enrollment_list.html", context)
 
 
-def enrollment_detail(request, enrollment_id):
+def enrollment_detail(request: HttpRequest, enrollment_id: int) -> HttpResponse:
     row = fetch_one(
         """
         SELECT
@@ -80,7 +82,7 @@ def enrollment_detail(request, enrollment_id):
     )
 
 
-def statistics(request):
+def statistics(request: HttpRequest) -> HttpResponse:
     summary = fetch_one(
         """
         SELECT
@@ -91,13 +93,14 @@ def statistics(request):
         FROM courses
         """
     )
-    active_count = fetch_one(
+    active_row = fetch_one(
         """
         SELECT COUNT(*) AS active_count
         FROM enrollments
         WHERE is_cancelled = 0
         """
-    )["active_count"]
+    )
+    active_count = active_row["active_count"] if active_row else 0
     by_course = fetch_all(
         """
         SELECT

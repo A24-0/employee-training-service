@@ -1,9 +1,10 @@
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
 from db.database import fetch_all, fetch_one
 
 
-def courses(request):
+def courses(request: HttpRequest) -> HttpResponse:
     courses_list = fetch_all(
         """
         SELECT id, title, category, total_lessons
@@ -17,7 +18,7 @@ def courses(request):
     return render(request, "courses/course_list.html", context)
 
 
-def course_detail(request, course_id):
+def course_detail(request: HttpRequest, course_id: int) -> HttpResponse:
     course = fetch_one(
         """
         SELECT id, title, category, total_lessons
@@ -37,7 +38,7 @@ def course_detail(request, course_id):
     )
 
 
-def available_courses(request):
+def available_courses(request: HttpRequest) -> HttpResponse:
     employees = fetch_all(
         """
         SELECT id, full_name, department

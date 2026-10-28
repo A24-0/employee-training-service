@@ -1,4 +1,7 @@
 import json
+import sqlite3
+from pathlib import Path
+from typing import Any, Dict, List, Union
 
 from db.database import DB_PATH, create_schema, get_connection
 
@@ -7,19 +10,19 @@ EMPLOYEES_FILE = "data/employees.json"
 ENROLLMENTS_FILE = "data/enrollments.json"
 
 
-def load_json(filename):
+def load_json(filename: str) -> List[Dict[str, Any]]:
     with open(filename, encoding="utf-8") as file:
         return json.load(file)
 
 
-def clear_tables(conn):
+def clear_tables(conn: sqlite3.Connection) -> None:
     # Сначала удаляем назначения: они ссылаются на курсы и сотрудников
     conn.execute("DELETE FROM enrollments")
     conn.execute("DELETE FROM employees")
     conn.execute("DELETE FROM courses")
 
 
-def import_courses(conn, filename=COURSES_FILE):
+def import_courses(conn: sqlite3.Connection, filename: str = COURSES_FILE) -> None:
     conn.executemany(
         """
         INSERT INTO courses (id, title, category, total_lessons)
@@ -32,7 +35,7 @@ def import_courses(conn, filename=COURSES_FILE):
     )
 
 
-def import_employees(conn, filename=EMPLOYEES_FILE):
+def import_employees(conn: sqlite3.Connection, filename: str = EMPLOYEES_FILE) -> None:
     conn.executemany(
         """
         INSERT INTO employees (id, full_name, department)
@@ -45,7 +48,9 @@ def import_employees(conn, filename=EMPLOYEES_FILE):
     )
 
 
-def import_enrollments(conn, filename=ENROLLMENTS_FILE):
+def import_enrollments(
+    conn: sqlite3.Connection, filename: str = ENROLLMENTS_FILE
+) -> None:
     conn.executemany(
         """
         INSERT INTO enrollments (
@@ -70,7 +75,7 @@ def import_enrollments(conn, filename=ENROLLMENTS_FILE):
     )
 
 
-def main(db_path=DB_PATH):
+def main(db_path: Union[str, Path] = DB_PATH) -> None:
     conn = get_connection(db_path)
     try:
         create_schema(conn)
