@@ -8,3 +8,4 @@ __pycache__/
 reports/
 db.sqlite3
 .DS_Store
+data/training_backup.sqlite
