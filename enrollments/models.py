@@ -7,7 +7,48 @@ from employees.models import Employee
 from models.status import EnrollmentStatus
 
 
+class EnrollmentQuerySet(models.QuerySet):
+    """Набор запросов для работы с назначениями."""
+
+    def active(self):
+        return self.filter(status=self.model.Status.ACTIVE)
+
+    def cancelled(self):
+        return self.filter(status=self.model.Status.CANCELLED)
+
+    def completed(self):
+        return self.filter(status=self.model.Status.COMPLETED)
+
+    def for_course(self, course):
+        return self.filter(course=course)
+
+    def for_employee(self, employee):
+        return self.filter(employee=employee)
+
+    def overdue(self):
+        # Активные назначения с прошедшим сроком и непройденными уроками
+        return self.active().filter(
+            deadline__lt=date.today(),
+            lessons_completed__lt=models.F("course__total_lessons"),
+        )
+
+    def with_related(self):
+        return self.select_related("course", "employee")
+
+
+class EnrollmentManager(models.Manager.from_queryset(EnrollmentQuerySet)):
+    pass
+
+
 class Enrollment(models.Model):
+    class Status(models.TextChoices):
+        # Назначение действует
+        ACTIVE = "active", "Активно"
+        # Назначение отменено
+        CANCELLED = "cancelled", "Отменено"
+        # Все уроки курса пройдены
+        COMPLETED = "completed", "Завершено"
+
     # PROTECT: курс и сотрудника нельзя удалить, пока на них ссылаются
     # назначения, — история обучения сохраняется
     course = models.ForeignKey(
@@ -24,6 +65,7 @@ class Enrollment(models.Model):
     )
     deadline = models.DateField(
         verbose_name="Срок сдачи",
+        help_text="Дата, до которой сотрудник должен пройти курс.",
     )
     lessons_completed = models.PositiveIntegerField(
         default=0,
@@ -36,11 +78,14 @@ class Enrollment(models.Model):
     total_questions = models.PositiveIntegerField(
         verbose_name="Вопросов в тесте",
     )
-    # Новое назначение по умолчанию активно
-    is_cancelled = models.BooleanField(
-        default=False,
-        verbose_name="Назначение отменено",
+    status = models.CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        verbose_name="Статус назначения",
     )
+
+    objects = EnrollmentManager()
 
     class Meta:
         ordering = ["deadline", "pk"]
@@ -50,11 +95,21 @@ class Enrollment(models.Model):
     def record_progress(self, lessons_completed: int, correct_answers: int) -> None:
         self.lessons_completed = lessons_completed
         self.correct_answers = correct_answers
-        self.save(update_fields=["lessons_completed", "correct_answers"])
+        update_fields = ["lessons_completed", "correct_answers"]
+        if self.lessons_completed >= self.course.total_lessons:
+            self.status = self.Status.COMPLETED
+            update_fields.append("status")
+        self.save(update_fields=update_fields)
 
     def cancel(self) -> None:
-        self.is_cancelled = True
-        self.save(update_fields=["is_cancelled"])
+        # Отмена меняет состояние, но не удаляет запись из базы
+        self.status = self.Status.CANCELLED
+        self.save(update_fields=["status"])
+
+    def mark_completed(self) -> None:
+        # Завершение фиксируется, когда пройдены все уроки курса
+        self.status = self.Status.COMPLETED
+        self.save(update_fields=["status"])
 
     def accuracy(self) -> int:
         if self.total_questions == 0:
@@ -67,7 +122,7 @@ class Enrollment(models.Model):
     def is_on_time(self) -> bool:
         return date.today() <= self.deadline
 
-    def status(self) -> str:
+    def result_text(self) -> str:
         return EnrollmentStatus.calculate(
             self.accuracy(), self.is_on_time(), self.is_lessons_done()
         )

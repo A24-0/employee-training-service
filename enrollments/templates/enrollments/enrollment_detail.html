@@ -10,6 +10,12 @@
 
 {% block content %}
     {% if enrollment %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-info">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
         <div class="card">
             <div class="card-body">
                 <h1 class="card-title h3">Назначение №{{ enrollment.id }}</h1>
@@ -19,7 +25,7 @@
                 </p>
                 <p class="card-text">
                     <strong>Курс:</strong>
-                    <a href="{% url 'courses:detail' enrollment.course.id %}">
+                    <a href="{{ enrollment.course.get_absolute_url }}">
                         {{ enrollment.course.title }}
                     </a>
                 </p>
@@ -39,16 +45,30 @@
                     {% include "enrollments/includes/enrollment_status.html" %}
                 </p>
                 <p class="card-text">
-                    <strong>Итог:</strong> {{ enrollment.status }}
+                    <strong>Итог:</strong> {{ enrollment.result_text }}
+                </p>
+                <p class="card-text">
+                    <strong>Результат теста:</strong> {{ enrollment.accuracy }}%
                 </p>
             </div>
         </div>
-    {% else %}
-        <h1 class="text-danger">Назначение не найдено</h1>
-        <p>Назначение с указанным идентификатором отсутствует.</p>
-    {% endif %}
 
-    <a href="{% url 'enrollments:list' %}" class="btn btn-outline-secondary mt-3">
-        ← к списку назначений
-    </a>
+        <div class="mt-3 d-flex gap-2">
+            <a
+                href="{% url 'enrollments:edit' enrollment.id %}"
+                class="btn btn-primary"
+            >Редактировать</a>
+            {% if enrollment.status == "active" %}
+                <form method="post" action="{% url 'enrollments:cancel' enrollment.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger">
+                        Отменить назначение
+                    </button>
+                </form>
+            {% endif %}
+            <a href="{% url 'enrollments:list' %}" class="btn btn-outline-secondary">
+                ← к списку назначений
+            </a>
+        </div>
+    {% endif %}
 {% endblock %}

@@ -32,7 +32,11 @@
 
     <footer class="container site-footer">
         <p>
-            © <span id="current-year"></span> Сервис обучения сотрудников
+            © <span id="current-year"></span> {{ site_name }}
+        </p>
+        <p class="text-muted small mb-0">
+            Курсов: {{ courses_count }} · сотрудников: {{ employees_count }}
+            · активных назначений: {{ active_enrollments_count }}
         </p>
     </footer>
 

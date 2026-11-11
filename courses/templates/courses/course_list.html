@@ -19,11 +19,18 @@
         {% endif %}
     </form>
 
-    <p class="text-muted">Всего курсов: {{ courses|length }}</p>
+    <p class="text-muted">
+        Найдено курсов: {{ courses|length }} из {{ courses_count }} в каталоге.
+    </p>
 
-    <a href="{% url 'courses:available' %}" class="btn btn-outline-primary mb-3">
-        Подобрать курс сотруднику
-    </a>
+    <div class="mb-3 d-flex gap-2">
+        <a href="{% url 'courses:available' %}" class="btn btn-outline-primary">
+            Подобрать курс сотруднику
+        </a>
+        <a href="{% url 'courses:create' %}" class="btn btn-primary">
+            Добавить курс
+        </a>
+    </div>
 
     {% for course in courses %}
         {% include "courses/includes/course_card.html" %}

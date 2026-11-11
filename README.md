@@ -91,13 +91,17 @@ return render(request, "courses/course_list.html", context)
 |---|---|
 | `homepage:index` | `/` |
 | `courses:list` | `/courses/` |
-| `courses:detail` | `/courses/<int:course_id>/` |
+| `courses:create` | `/courses/create/` |
+| `courses:detail` | `/courses/<slug:slug>/` |
 | `courses:available` | `/courses/available/` |
 | `enrollments:list` | `/enrollments/` |
+| `enrollments:create` | `/enrollments/create/` |
 | `enrollments:detail` | `/enrollments/<int:enrollment_id>/` |
+| `enrollments:edit` | `/enrollments/<int:enrollment_id>/edit/` |
+| `enrollments:cancel` | `/enrollments/<int:enrollment_id>/cancel/` (только POST) |
 | `enrollments:statistics` | `/enrollments/statistics/` |
 
-Все ссылки в шаблонах строятся через `{% url %}`, например `{% url 'courses:detail' course.id %}`; жёстко заданные адреса не используются.
+Все ссылки в шаблонах строятся через `{% url %}`, например `{% url 'enrollments:detail' enrollment.id %}`, либо через `get_absolute_url()` модели курса; жёстко заданные адреса не используются.
 
 ## Статические файлы
 Статические файлы проекта лежат в `homepage/static/homepage/` и подключаются в `base.html` после `{% load static %}`:
@@ -186,14 +190,20 @@ python -m db.import_json
 #### Модели Django
 | Модель | Приложение | Поля | Таблица |
 |---|---|---|---|
-| `Course` — курс | `courses` | `title` (`CharField`), `category` (`CharField`), `total_lessons` (`PositiveIntegerField`) | `courses_course` |
+| `Course` — курс | `courses` | `title` (`CharField`), `category` (`CharField`), `total_lessons` (`PositiveIntegerField`), `cover` (`ImageField`), `slug` (`SlugField`, уникальный), `is_long` (`GeneratedField`) | `courses_course` |
 | `Employee` — сотрудник | `employees` | `full_name` (`CharField`), `department` (`CharField`) | `employees_employee` |
-| `Enrollment` — назначение | `enrollments` | `course` (`ForeignKey`), `employee` (`ForeignKey`), `deadline` (`DateField`), `lessons_completed`, `correct_answers`, `total_questions` (`PositiveIntegerField`), `is_cancelled` (`BooleanField`, по умолчанию `False`) | `enrollments_enrollment` |
+| `Enrollment` — назначение | `enrollments` | `course` (`ForeignKey`), `employee` (`ForeignKey`), `deadline` (`DateField`), `lessons_completed`, `correct_answers`, `total_questions` (`PositiveIntegerField`), `status` (`CharField` с `choices` из `Enrollment.Status`) | `enrollments_enrollment` |
 
 Первичный ключ `id` Django создаёт автоматически (`BigAutoField`). У каждой модели заданы `__str__()`, `Meta.ordering` и `verbose_name`. Методы моделей:
 - `Course.has_at_least()` — проверка длительности курса;
-- `Enrollment.record_progress()`, `Enrollment.cancel()` — изменение и сохранение назначения (`save(update_fields=...)`);
-- `Enrollment.accuracy()`, `is_lessons_done()`, `is_on_time()`, `status()` — расчёт итогового статуса через `EnrollmentStatus` из пакета `models/`.
+- `Course.save()` — автоматическое формирование слага из названия (`pytils.translit.slugify`) с проверкой уникальности;
+- `Course.get_absolute_url()` — адрес страницы курса по слагу;
+- `Enrollment.record_progress()`, `Enrollment.cancel()`, `Enrollment.mark_completed()` — изменение состояния назначения (`save(update_fields=...)`); отмена не удаляет запись;
+- `Enrollment.accuracy()`, `is_lessons_done()`, `is_on_time()`, `result_text()` — расчёт итогового текста через `EnrollmentStatus` из пакета `models/`.
+
+Статусы назначения — перечисление `Enrollment.Status` (`TextChoices`): `active` (активно), `cancelled` (отменено), `completed` (завершено, все уроки пройдены). При пройденных уроках статус переходит в `completed`; отмена — только смена статуса.
+
+`status` — название статуса назначения, поэтому метод, который раньше назывался `status()`, переименован в `result_text()`: иначе имя метода перекрывало имя поля.
 
 #### Связи
 - `Enrollment.course` → `Course` и `Enrollment.employee` → `Employee` — связи «многие к одному» (`ForeignKey`), внешние ключи `course_id` и `employee_id` находятся в таблице назначений.
@@ -201,7 +211,9 @@ python -m db.import_json
 - `related_name="enrollments"` — обратная связь: `course.enrollments.all()`, `employee.enrollments.all()`.
 
 #### Миграции
-- `courses/migrations/0001_initial.py`, `employees/migrations/0001_initial.py`, `enrollments/migrations/0001_initial.py` — создание таблиц моделей.
+- `courses/migrations/0001_initial.py`, `employees/migrations/0001_initial.py`, `enrollments/migrations/0001_initial.py` — создание таблиц моделей;
+- `courses/0002` — поля `slug`, `cover`, вычисляемое `is_long`; `courses/0003` — заполнение слагов существующих курсов (`RunPython`); `courses/0004` — уникальность `slug`;
+- `enrollments/0002` — поле `status`; `enrollments/0003` — перенос данных из `is_cancelled` в `status` (`RunPython`); `enrollments/0004` — удаление `is_cancelled`.
 
 ```
 python manage.py makemigrations
@@ -221,15 +233,15 @@ python db/import_sqlite_to_orm.py
 Перед переносом создана резервная копия `data/training_backup.sqlite` (не хранится в репозитории). Ожидаемый результат: 3 курса, 3 сотрудника, 6 назначений.
 
 #### Список назначений
-Параметры страницы `/enrollments/` передаются через GET и проверяются в представлении:
+Параметры страницы `/enrollments/` передаются через GET и проверяются формой `EnrollmentFilterForm` (`forms.Form`); значения берутся из `cleaned_data`:
 
 | Параметр | Назначение | ORM |
 |---|---|---|
 | `q` | поиск по ФИО сотрудника | `filter(employee__full_name__iregex=...)` |
 | `course` | курс | `filter(course_id=...)` |
 | `employee` | сотрудник | `filter(employee_id=...)` |
-| `status` | `active` / `cancelled` | `filter(is_cancelled=...)` |
-| `deadline` | срок сдачи не позднее даты; некорректная дата — сообщение «Укажите корректную дату» | `filter(deadline__lte=...)` |
+| `status` | `active` / `cancelled` / `completed` | `filter(status=...)` |
+| `deadline` | срок сдачи не позднее даты; некорректная дата — ошибка формы рядом с полем | `filter(deadline__lte=...)` |
 | `sort` | `deadline`, `-deadline`, `course`, `employee`; неизвестное значение — сортировка по сроку | `order_by(SORT_FIELDS[sort], "id")` |
 | `page` | номер страницы (по 5 записей); некорректный номер — первая или последняя страница | `Paginator.get_page()` |
 
@@ -240,27 +252,67 @@ python db/import_sqlite_to_orm.py
 #### ORM-запросы проекта
 | № | Где | Выражение | Приём |
 |---|---|---|---|
-| 1 | `courses()` | `Course.objects.order_by("title")` | набор объектов, сортировка по одному полю |
+| 1 | `courses()` | `Course.objects.annotate(active_count=Count("enrollments", filter=Q(...)))` | агрегат с условием, число активных назначений в списке |
 | 2 | `courses()` | `filter(Q(title__iregex=...) \| Q(category__iregex=...))` | поиск по нескольким полям |
-| 3 | `course_detail()` | `get_object_or_404(Course, pk=course_id)` | один объект, обработка отсутствия |
-| 4 | `course_detail()` | `course.enrollments.filter(is_cancelled=False).select_related("employee")` | обратная связь, `select_related()` |
+| 3 | `course_detail()` | `get_object_or_404(Course, slug=slug)` | один объект, обработка отсутствия |
+| 4 | `course_detail()` | `course.enrollments.active().select_related("employee")` | обратная связь, метод менеджера, `select_related()` |
 | 5 | `available_courses()` | `Employee.objects.filter(pk=...).exists()` | проверка параметра запроса |
-| 6 | `available_courses()` | `Enrollment.objects.filter(employee_id=..., is_cancelled=False).values_list("course_id", flat=True)` | фильтрация по нескольким условиям, по внешнему ключу |
+| 6 | `available_courses()` | `Enrollment.objects.active().filter(employee_id=...).values_list("course_id", flat=True)` | менеджер, фильтрация по внешнему ключу |
 | 7 | `available_courses()` | `Course.objects.exclude(pk__in=...)` | исключение записей |
 | 8 | `enrollments()` | `filter(employee__full_name__iregex=...)` | поиск по полю связанной модели |
-| 9 | `enrollments()` | `filter(course_id=...)`, `filter(employee_id=...)`, `filter(is_cancelled=...)` | цепочка фильтров («И») |
+| 9 | `enrollments()` | `filter(course=...)`, `filter(employee=...)`, `filter(status=...)` | цепочка фильтров («И») |
 | 10 | `enrollments()` | `filter(deadline__lte=...)` | фильтрация по дате |
-| 11 | `enrollments()` | `annotate(course_title=F("course__title"), ...).order_by(..., "id").values(...)` | `F()`, сортировка по полю связанной модели и по нескольким полям, `values()` |
+| 11 | `enrollments()` | `with_related().annotate(course_title=F("course__title")).order_by(SORT_FIELDS[sort], "id")` | `F()`, сортировка по полю связанной модели |
 | 12 | `enrollments()` | `Paginator(enrollments_list, 5).get_page(...)` | постраничный вывод |
-| 13 | `enrollment_detail()` | `get_object_or_404(Enrollment.objects.select_related("course", "employee"), pk=...)` | связанные объекты одним запросом |
+| 13 | `enrollment_detail()` | `get_object_or_404(Enrollment.objects.with_related(), pk=...)` | связанные объекты одним запросом |
 | 14 | `statistics()` | `Course.objects.aggregate(Count, Min, Max, Round(Avg))` | сводные показатели |
-| 15 | `statistics()` | `Enrollment.objects.filter(is_cancelled=False).count()` | количество активных назначений |
+| 15 | `statistics()` | `Enrollment.objects.active().count()`, `.cancelled()`, `.completed()` | подсчёт по статусам через методы менеджера |
 | 16 | `statistics()` | `Course.objects.annotate(enrollments_count=Count("enrollments", filter=Q(...)))` | показатель для каждого курса, курсы без назначений не теряются (аналог `LEFT JOIN`) |
 | 17 | `statistics()` | `values(department=F("employee__department")).annotate(Count("id"))` | группировка по отделам |
 | 18 | `statistics()` | `by_course.filter(enrollments_count__gt=1)` | условие на агрегат (аналог `HAVING`) |
-| 19 | `statistics()` | `filter(deadline__lt=..., lessons_completed__lt=F("course__total_lessons"))` | сравнение с полем связанной модели |
+| 19 | `statistics()` | `Enrollment.objects.overdue()` (`deadline__lt=..., lessons_completed__lt=F(...)`) | сравнение с полем связанной модели |
+| 20 | `CourseAdmin.get_queryset()` | `annotate(active_count=Count("enrollments", filter=Q(...)))` | агрегат в админ-списке одним запросом |
+| 21 | `EnrollmentAdmin` | `list_select_related = ("course", "employee")` | устранение N+1 в админ-списке |
+| 22 | `_has_active_conflict()` | `Enrollment.objects.active().filter(employee=..., course=...).exclude(pk=...)` | проверка правила предметной области при создании и редактировании |
 
-Отменённые назначения не учитываются в статистике и не мешают снова подобрать сотруднику тот же курс.
+Отменённые назначения не учитываются в статистике, не блокируют повторное назначение курса сотруднику и не влияют на проверку конфликта при создании.
+
+### Административная панель (ПР10)
+Панель доступна по адресу `/admin/` и требует учётной записи Django (`python manage.py createsuperuser`). Модели `Course`, `Employee`, `Enrollment` зарегистрированы в `admin.py` соответствующих приложений. Локализация задана настройками `LANGUAGE_CODE = "ru-RU"`, `verbose_name` приложений (`AppConfig`), моделей и полей.
+
+| Модель | Список | Поиск | Фильтры | Прочее |
+|---|---|---|---|---|
+| `Course` | `id`, `title`, `category`, `total_lessons`, `is_long`, «Активные назначения» | `title`, `category` | `category`, `is_long` | `list_editable=("total_lessons",)`, `readonly_fields=("id", "slug", "is_long")`, inline назначений, 10 записей на страницу |
+| `Employee` | `id`, `full_name`, `department`, «Активные назначения» | `full_name`, `department` | `department` | inline назначений, `readonly_fields=("id",)`, 10 записей |
+| `Enrollment` | `id`, `employee`, `course`, «Уроков в курсе», `deadline`, `status`, `lessons_completed`, «Результат теста» | `employee__full_name`, `course__title` | `status`, `course`, `deadline` | `list_select_related`, `date_hierarchy`, действия «Отменить выбранные назначения» и «Отметить завершёнными», 20 записей |
+
+- Связанные назначения выводятся в карточках курса и сотрудника через `admin.TabularInline` (только чтение, без удаления);
+- число активных назначений в списках считается через `annotate()` в `get_queryset()`, поэтому N+1 не возникает;
+- `on_delete=models.PROTECT` не даёт удалить курс или сотрудника с назначениями — это проверено вручную и видно в админ-панели;
+- запрет удаления через `has_delete_permission()` оставлен в стандартном поведении.
+
+### Формы и загрузка файлов (ПР11)
+- `enrollments/forms.py`:
+  - `EnrollmentFilterForm` (`forms.Form`) — фильтрация списка: `q` (поиск по ФИО), `course` и `employee` (`ModelChoiceField` проверяет существование объекта), `status` (`ChoiceField` по кодам статусов), `deadline` (`DateField`), `sort` (`ChoiceField`); пользовательская проверка `clean_q()` требует не менее двух символов;
+  - `EnrollmentForm` (`forms.ModelForm`) — создание и редактирование назначения: поля `employee`, `course`, `deadline`, `total_questions`, `lessons_completed`, `correct_answers`, подписи, `help_texts` и виджеты; `clean_deadline()` запрещает прошедшую дату; `clean()` проверяет, что уроков пройдено не больше, чем есть в курсе, а правильных ответов — не больше числа вопросов.
+- `courses/forms.py`: `CourseForm` (`ModelForm`) с `ImageField` обложки, `clean_title()`.
+- Правило предметной области проверяется в представлении: у сотрудника не может быть двух активных назначений на один курс; проверка идёт через `Enrollment.objects.active()`, при редактировании текущая запись исключается (`exclude(pk=self.instance.pk)`), ошибка добавляется в форму (`form.add_error(None, ...)`).
+- Маршруты: `/courses/create/`, `/enrollments/create/`, `/enrollments/<id>/edit/`, отмена — только `POST` на `/enrollments/<id>/cancel/` (декоратор `require_POST`), статус меняется на `cancelled`, запись остаётся в базе.
+- Загрузка обложек: `MEDIA_URL = "/media/"`, `MEDIA_ROOT = BASE_DIR / "media"`, форма с `enctype="multipart/form-data"`, файл сохраняется в `media/courses/`, страница курса выводит изображение или сообщение «Обложка не загружена».
+
+### Анализ SQL и Django Debug Toolbar
+`django-debug-toolbar` подключён в `INSTALLED_APPS`, `MIDDLEWARE` и `urls.py` только при `DEBUG = True`; панель доступна с `127.0.0.1` (`INTERNAL_IPS`). Фактическое число запросов при обработке страниц:
+
+| Страница | Запросов |
+|---|---|
+| `/courses/` | 4 |
+| `/courses/<slug>/` | 5 |
+| `/enrollments/` | 7 |
+| `/enrollments/?status=active` | 7 |
+| `/enrollments/statistics/` | 12 |
+| `/enrollments/<id>/` | 4 |
+
+Связанные курс и сотрудник загружаются через `select_related()` / `list_select_related`, названия в списке — через `annotate(F(...))`; число запросов не растёт с числом строк.
 
 ## Структура проекта
 ```text
@@ -275,6 +327,7 @@ employee-training-service/
 ├── utils.py
 │
 ├── db.sqlite3            # база Django (не в репозитории)
+├── media/                # загруженные обложки курсов (не в репозитории)
 │
 ├── db/
 │   ├── __init__.py
@@ -324,17 +377,25 @@ employee-training-service/
 │   │       │   └── course_card.html
 │   │       ├── available.html
 │   │       ├── course_detail.html
+│   │       ├── course_form.html
 │   │       └── course_list.html
 │   ├── migrations/
-│   │   └── 0001_initial.py
+│   │   ├── 0001_initial.py
+│   │   ├── 0002_course_cover_course_is_long_course_slug_and_more.py
+│   │   ├── 0003_fill_course_slugs.py
+│   │   └── 0004_alter_course_slug.py
+│   ├── admin.py
 │   ├── apps.py
+│   ├── context_processors.py
+│   ├── forms.py
 │   ├── models.py
 │   ├── urls.py
 │   └── views.py
-│
+
 ├── employees/
 │   ├── migrations/
 │   │   └── 0001_initial.py
+│   ├── admin.py
 │   ├── apps.py
 │   └── models.py
 │
@@ -344,11 +405,17 @@ employee-training-service/
 │   │       ├── includes/
 │   │       │   └── enrollment_status.html
 │   │       ├── enrollment_detail.html
+│   │       ├── enrollment_form.html
 │   │       ├── enrollment_list.html
 │   │       └── statistics.html
 │   ├── migrations/
-│   │   └── 0001_initial.py
+│   │   ├── 0001_initial.py
+│   │   ├── 0002_enrollment_status_alter_enrollment_deadline.py
+│   │   ├── 0003_migrate_enrollment_statuses.py
+│   │   └── 0004_remove_enrollment_is_cancelled.py
+│   ├── admin.py
 │   ├── apps.py
+│   ├── forms.py
 │   ├── models.py
 │   ├── urls.py
 │   └── views.py
@@ -370,7 +437,8 @@ employee-training-service/
     ├── test_courses.py
     ├── test_database.py
     ├── test_employees.py
-    └── test_enrollments.py
+    ├── test_enrollments.py
+    └── test_web.py          # модели, представления, формы, админ-панель
 ```
 
 ## Назначение модулей
@@ -414,7 +482,10 @@ Django-приложение, отвечающее за назначения ку
 ## Требования
 - Python 3.x;
 - Django 5.2;
-- pytest;
+- Pillow (для `ImageField`);
+- pytils (транслитерация слагов);
+- django-debug-toolbar (анализ SQL, только при `DEBUG`);
+- pytest, pytest-django;
 - flake8.
 
 Установка зависимостей:
@@ -452,6 +523,7 @@ python manage.py showmigrations
 ```
 pytest
 ```
+Тесты в `tests/test_web.py` используют `TestCase` и `pytest-django`: проверяют генерацию слагов, `GeneratedField`, методы менеджера, страницу курса по слагу и 404, фильтрацию и пагинацию списка, валидацию формы фильтрации, создание и редактирование назначения, запрет прошедшей даты и повторного активного назначения, отмену, статистику, регистрацию моделей в админ-панели и загрузку обложки.
 
 ## Проверка качества кода
 ```
@@ -496,11 +568,26 @@ flake8
 - поиск курсов и назначений, фильтрация, сортировка и постраничный вывод списка назначений;
 - статистика через `aggregate()` и `annotate()`.
 
-Формы в текущей версии не используются.
+Реализовано (ПР10):
+- административная панель для `Course`, `Employee`, `Enrollment`: столбцы, поиск, фильтры, сортировка, inline связанных назначений, массовые действия;
+- русскоязычные названия приложений, моделей и полей, подсказки `help_text`;
+- статусы назначений через `TextChoices` и перенос данных из `is_cancelled` миграцией;
+- пользовательский `EnrollmentQuerySet` и менеджер (`active()`, `cancelled()`, `completed()`, `overdue()`, `with_related()`);
+- слаги курсов, `get_absolute_url()`, вычисляемое поле `is_long` (`GeneratedField`);
+- контекстный процессор с общими данными для шаблонов;
+- анализ SQL через Django Debug Toolbar, устранение N+1.
+
+Реализовано (ПР11):
+- `EnrollmentFilterForm` (`forms.Form`) с проверкой GET-параметров и выводом ошибок в шаблоне;
+- `EnrollmentForm` (`ModelForm`): создание и редактирование назначения, подписи, виджеты, `clean_deadline()` и `clean()`;
+- проверка правила «одно активное назначение на курс для сотрудника» с исключением текущей записи при редактировании;
+- отмена назначения через POST-форму со сменой статуса, без удаления записи;
+- загрузка обложек курсов (`ImageField`, `MEDIA_ROOT`, `enctype="multipart/form-data"`), создание курса через форму;
+- защита POST-форм CSRF-токеном.
 
 Планируется:
-- формы создания курсов, назначений и обновления прогресса;
-- реализация пользователей (аутентификация сотрудников);
+- обновление прогресса сотрудника через форму;
+- аутентификация сотрудников;
 - разработка API;
 - контейнеризация приложения;
 - настройка CI/CD.

@@ -23,6 +23,10 @@ INSTALLED_APPS = [
     'enrollments',
 ]
 
+# Панель отладки SQL подключается только в режиме разработки
+if DEBUG:
+    INSTALLED_APPS.append('debug_toolbar')
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -32,6 +36,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if DEBUG:
+    MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
 
 ROOT_URLCONF = 'training.urls'
 
@@ -45,6 +52,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'courses.context_processors.training_context',
             ],
         },
     },
@@ -87,6 +95,13 @@ USE_TZ = True
 
 
 STATIC_URL = 'static/'
+
+# Загруженные обложки курсов
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Панель отладки SQL доступна только с этих адресов
+INTERNAL_IPS = ['127.0.0.1', 'localhost']
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

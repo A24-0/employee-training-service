@@ -1,9 +1,13 @@
-{% if enrollment.is_cancelled %}
-    <span class="badge bg-secondary enrollment-status enrollment-status-cancelled">
-        Отменено
+{% if enrollment.status == "active" %}
+    <span class="badge bg-success enrollment-status enrollment-status-active">
+        {{ enrollment.get_status_display }}
+    </span>
+{% elif enrollment.status == "completed" %}
+    <span class="badge bg-primary enrollment-status enrollment-status-completed">
+        {{ enrollment.get_status_display }}
     </span>
 {% else %}
-    <span class="badge bg-success enrollment-status enrollment-status-active">
-        Активно
+    <span class="badge bg-secondary enrollment-status enrollment-status-cancelled">
+        {{ enrollment.get_status_display }}
     </span>
 {% endif %}

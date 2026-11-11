@@ -1,12 +1,23 @@
 <article class="card course-card mb-3">
+    {% if course.cover %}
+        <img
+            src="{{ course.cover.url }}"
+            alt="Обложка курса {{ course.title }}"
+            class="card-img-top course-cover"
+        >
+    {% endif %}
     <div class="card-body">
         <h2 class="card-title h5">
             {{ course.title|default:"Без названия" }}
         </h2>
         <p class="card-text">
             {{ course.category }} · {{ course.total_lessons }} уроков
+            {% if course.is_long %}· длительный{% endif %}
         </p>
-        <a href="{% url 'courses:detail' course.id %}" class="btn btn-primary btn-sm">
+        <p class="card-text text-muted small">
+            Активных назначений: {{ course.active_count }}
+        </p>
+        <a href="{{ course.get_absolute_url }}" class="btn btn-primary btn-sm">
             Подробнее
         </a>
     </div>

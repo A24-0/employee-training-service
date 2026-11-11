@@ -7,5 +7,6 @@ __pycache__/
 *.egg-info/
 reports/
 db.sqlite3
+media/
 .DS_Store
 data/training_backup.sqlite

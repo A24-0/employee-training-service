@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Новый курс – Сервис обучения сотрудников{% endblock %}
+
+{% block content %}
+    <h1>Новый курс</h1>
+
+    {# enctype обязателен, чтобы браузер передал файл обложки #}
+    <form method="post" enctype="multipart/form-data" class="col-lg-8">
+        {% csrf_token %}
+
+        {% for error in form.non_field_errors %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endfor %}
+
+        {% for field in form %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">
+                    {{ field.label }}
+                </label>
+                {{ field }}
+                {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                {% endif %}
+                {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <a href="{% url 'courses:list' %}" class="btn btn-outline-secondary">
+            Отмена
+        </a>
+    </form>
+{% endblock %}

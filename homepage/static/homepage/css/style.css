@@ -43,6 +43,13 @@ body {
     border-radius: 8px;
 }
 
+.course-cover {
+    max-height: 240px;
+    object-fit: cover;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
 .enrollment-status {
     font-weight: 600;
     letter-spacing: 0.02em;

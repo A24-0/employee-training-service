@@ -6,36 +6,50 @@
     <h1>Статистика обучения</h1>
 
     <div class="row g-3 mb-4">
-        <div class="col-sm-4">
+        <div class="col-6 col-md-3">
             <div class="card stat-card"><div class="card-body">
                 <div class="stat-value">{{ active_count }}</div>
                 <div class="text-muted">активных назначений</div>
             </div></div>
         </div>
-        <div class="col-sm-4">
+        <div class="col-6 col-md-3">
             <div class="card stat-card"><div class="card-body">
-                <div class="stat-value">{{ summary.courses_count }}</div>
-                <div class="text-muted">курсов в каталоге</div>
+                <div class="stat-value">{{ completed_count }}</div>
+                <div class="text-muted">завершённых назначений</div>
             </div></div>
         </div>
-        <div class="col-sm-4">
+        <div class="col-6 col-md-3">
             <div class="card stat-card"><div class="card-body">
-                <div class="stat-value">{{ summary.avg_lessons }}</div>
-                <div class="text-muted">
-                    уроков в среднем (от {{ summary.min_lessons }} до {{ summary.max_lessons }})
-                </div>
+                <div class="stat-value">{{ cancelled_count }}</div>
+                <div class="text-muted">отменённых назначений</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stat-card"><div class="card-body">
+                <div class="stat-value">{{ overdue_count }}</div>
+                <div class="text-muted">просроченных активных</div>
             </div></div>
         </div>
     </div>
 
+    <p class="text-muted">
+        Курсов в каталоге: {{ summary.courses_count }};
+        уроков в среднем: {{ summary.avg_lessons }}
+        (от {{ summary.min_lessons }} до {{ summary.max_lessons }}).
+    </p>
+
     <h2 class="h4">Назначения по курсам</h2>
     <table class="table table-sm stat-table">
-        <thead><tr><th>Курс</th><th>Активных назначений</th></tr></thead>
+        <thead><tr><th>Курс</th><th>Активных назначений</th><th>Завершённых</th></tr></thead>
         <tbody>
             {% for item in by_course %}
-                <tr><td>{{ item.course_title }}</td><td>{{ item.enrollments_count }}</td></tr>
+                <tr>
+                    <td>{{ item.course_title }}</td>
+                    <td>{{ item.enrollments_count }}</td>
+                    <td>{{ item.completed_count }}</td>
+                </tr>
             {% empty %}
-                <tr><td colspan="2">Данные отсутствуют.</td></tr>
+                <tr><td colspan="3">Данные отсутствуют.</td></tr>
             {% endfor %}
         </tbody>
     </table>
