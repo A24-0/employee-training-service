@@ -1,54 +1,46 @@
 {% extends "base.html" %}
 
-{% block title %}
-    {% if course %}
-        {{ course.title }} – Сервис обучения сотрудников
-    {% else %}
-        Курс не найден – Сервис обучения сотрудников
-    {% endif %}
-{% endblock %}
+{% block title %}{{ course.title }} – Сервис обучения сотрудников{% endblock %}
 
 {% block content %}
-    {% if course %}
-        <div class="card course-card">
-            {% if course.cover %}
-                <img
-                    src="{{ course.cover.url }}"
-                    alt="Обложка курса {{ course.title }}"
-                    class="card-img-top course-cover"
-                >
-            {% endif %}
-            <div class="card-body">
-                <h1 class="card-title h3">{{ course.title }}</h1>
-                <p class="card-text">
-                    <strong>Категория:</strong> {{ course.category|default:"не указана" }}
-                </p>
-                <p class="card-text">
-                    <strong>Количество уроков:</strong> {{ course.total_lessons }}
-                    {% if course.is_long %}
-                        <span class="badge bg-info">длительный курс</span>
-                    {% endif %}
-                </p>
-                <p class="card-text">
-                    <strong>Адрес страницы:</strong> {{ course.get_absolute_url }}
-                </p>
-                {% if not course.cover %}
-                    <p class="text-muted">Обложка не загружена.</p>
+    <div class="card course-card">
+        {% if course.cover %}
+            <img
+                src="{{ course.cover.url }}"
+                alt="Обложка курса {{ course.title }}"
+                class="card-img-top course-cover"
+            >
+        {% endif %}
+        <div class="card-body">
+            <h1 class="card-title h3">{{ course.title }}</h1>
+            <p class="card-text">
+                <strong>Категория:</strong> {{ course.category|default:"не указана" }}
+            </p>
+            <p class="card-text">
+                <strong>Количество уроков:</strong> {{ course.total_lessons }}
+                {% if course.is_long %}
+                    <span class="badge bg-info">длительный курс</span>
                 {% endif %}
-                <h2 class="h5 mt-4">Активные назначения</h2>
-                <ul>
-                    {% for enrollment in active_enrollments %}
-                        <li>
-                            <a href="{% url 'enrollments:detail' enrollment.id %}">№{{ enrollment.id }}</a>
-                            {{ enrollment.employee.full_name }}, срок {{ enrollment.deadline|date:"d.m.Y" }}
-                        </li>
-                    {% empty %}
-                        <li>Активных назначений нет.</li>
-                    {% endfor %}
-                </ul>
-            </div>
+            </p>
+            <p class="card-text">
+                <strong>Адрес страницы:</strong> {{ course.get_absolute_url }}
+            </p>
+            {% if not course.cover %}
+                <p class="text-muted">Обложка не загружена.</p>
+            {% endif %}
+            <h2 class="h5 mt-4">Активные назначения</h2>
+            <ul>
+                {% for enrollment in active_enrollments %}
+                    <li>
+                        <a href="{% url 'enrollments:detail' enrollment.id %}">№{{ enrollment.id }}</a>
+                        {{ enrollment.employee.full_name }}, срок {{ enrollment.deadline|date:"d.m.Y" }}
+                    </li>
+                {% empty %}
+                    <li>Активных назначений нет.</li>
+                {% endfor %}
+            </ul>
         </div>
-    {% endif %}
+    </div>
 
     <a href="{% url 'courses:list' %}" class="btn btn-outline-secondary mt-3">
         ← к списку курсов

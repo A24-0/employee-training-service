@@ -94,9 +94,13 @@ class CourseViewTests(BaseDataTestCase):
         assert response.status_code == 200
         assert "Основы Python" in response.content.decode()
 
-    def test_unknown_slug_returns_404(self):
+    def test_unknown_slug_shows_site_404_page(self):
         response = self.client.get("/courses/no-such-course/")
         assert response.status_code == 404
+        content = response.content.decode()
+        # Не техническая страница Django, а шаблон проекта
+        assert "404 – страница не найдена" in content
+        assert "Проверьте адрес" in content
 
     def test_course_create_uploads_cover(self):
         # Минимальный корректный PNG 1x1
@@ -342,11 +346,31 @@ class EnrollmentFormTests(BaseDataTestCase):
         )
         assert response.status_code == 405
 
-    def test_missing_enrollment_returns_404(self):
+    def test_missing_enrollment_shows_site_404_page(self):
         response = self.client.get(
             reverse("enrollments:detail", kwargs={"enrollment_id": 999})
         )
         assert response.status_code == 404
+        content = response.content.decode()
+        assert "404 – страница не найдена" in content
+        assert "главную" in content
+
+    def test_missing_enrollment_edit_shows_site_404_page(self):
+        response = self.client.get(
+            reverse("enrollments:edit", kwargs={"enrollment_id": 999})
+        )
+        assert response.status_code == 404
+        assert "404 – страница не найдена" in response.content.decode()
+
+    def test_unknown_url_shows_site_404_page(self):
+        response = self.client.get("/net-takoy-stranicy/")
+        assert response.status_code == 404
+        assert "404 – страница не найдена" in response.content.decode()
+
+    def test_url_without_slash_is_redirected(self):
+        response = self.client.get("/enrollments")
+        assert response.status_code == 301
+        assert response.url == "/enrollments/"
 
 
 class StatisticsTests(BaseDataTestCase):

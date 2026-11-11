@@ -3,13 +3,14 @@ from django.core.paginator import Paginator
 from django.db.models import Avg, Count, F, Max, Min, Q
 from django.db.models.functions import Round
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from courses.models import Course
 from employees.models import Employee
 from enrollments.forms import EnrollmentFilterForm, EnrollmentForm
 from enrollments.models import Enrollment
+from homepage.views import page_not_found
 
 PAGE_SIZE = 5
 
@@ -84,11 +85,11 @@ def enrollments(request: HttpRequest) -> HttpResponse:
 
 
 def enrollment_detail(request: HttpRequest, enrollment_id: int) -> HttpResponse:
-    # Курс и сотрудник загружаются вместе с назначением одним запросом
-    enrollment = get_object_or_404(
-        Enrollment.objects.with_related(),
-        pk=enrollment_id,
-    )
+    # Курс и сотрудник загружаются вместе с назначением одним запросом;
+    # отсутствующее назначение показывает страницу проекта «404 – страница не найдена»
+    enrollment = Enrollment.objects.with_related().filter(pk=enrollment_id).first()
+    if enrollment is None:
+        return page_not_found(request)
     context = {
         "enrollment": enrollment,
     }
@@ -138,7 +139,9 @@ def enrollment_create(request: HttpRequest) -> HttpResponse:
 
 
 def enrollment_edit(request: HttpRequest, enrollment_id: int) -> HttpResponse:
-    enrollment = get_object_or_404(Enrollment, pk=enrollment_id)
+    enrollment = Enrollment.objects.filter(pk=enrollment_id).first()
+    if enrollment is None:
+        return page_not_found(request)
     if request.method == "POST":
         # instance связывает форму с существующим объектом
         form = EnrollmentForm(request.POST, instance=enrollment)
@@ -164,7 +167,9 @@ def enrollment_edit(request: HttpRequest, enrollment_id: int) -> HttpResponse:
 @require_POST
 def enrollment_cancel(request: HttpRequest, enrollment_id: int) -> HttpResponse:
     # Отмена меняет статус, запись остаётся в базе
-    enrollment = get_object_or_404(Enrollment, pk=enrollment_id)
+    enrollment = Enrollment.objects.filter(pk=enrollment_id).first()
+    if enrollment is None:
+        return page_not_found(request)
     if enrollment.status == Enrollment.Status.CANCELLED:
         messages.info(request, "Назначение уже отменено.")
     else:

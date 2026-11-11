@@ -2,12 +2,13 @@ import re
 
 from django.db.models import Count, Q
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 
 from courses.forms import CourseForm
 from courses.models import Course
 from employees.models import Employee
 from enrollments.models import Enrollment
+from homepage.views import page_not_found
 
 
 def courses(request: HttpRequest) -> HttpResponse:
@@ -34,8 +35,11 @@ def courses(request: HttpRequest) -> HttpResponse:
 
 
 def course_detail(request: HttpRequest, slug: str) -> HttpResponse:
-    # Страница курса открывается по слагу, а не по числовому id
-    course = get_object_or_404(Course, slug=slug)
+    # Страница курса открывается по слагу, а не по числовому id.
+    # Отсутствующий курс показывает страницу проекта «404 – страница не найдена»
+    course = Course.objects.filter(slug=slug).first()
+    if course is None:
+        return page_not_found(request)
     # Обратная связь related_name="enrollments": активные назначения курса
     active_enrollments = (
         course.enrollments.active()
